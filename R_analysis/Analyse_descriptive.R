@@ -17,15 +17,14 @@ library(tmap)
 list.files(pattern = "world")
 
 #Charger les données
-regions <- read.csv("local/data/200isoRegionCodes.csv")
-f1 <- read.csv("local/data/abelCohen2019flowsv6.csv")
-f2 <- read.csv("local/data/abelCohen2019flowsv6_flowdt.csv")
-f2 <- read.csv("ProjetStat/data/azoseRaftery2019flows.csv")
+regions <- read.csv("ProjetStat/data/200isoRegionCodes.csv")
+f2 <- read.csv("ProjetStat/data/abelCohen2019flowsv6_flowdt.csv")
+f3 <- read.csv("ProjetStat/data/azoseRaftery2019flows.csv")
 head(f2)
 view(f)
 
 #-------Importation du Shapefile-------------------
-wrld <- st_read(dsn ="ProjetStat/world-administrative-boundaries-countries.shp" , stringsAsFactors = F)
+wrld <- st_read(dsn ="ProjetStat/bin/world-administrative-boundaries-countries.shp" , stringsAsFactors = F)
 View(wrld)
 par(mar = c(0, 0, 0, 0))
 plot(st_geometry(wrld), col = "gray")
@@ -33,16 +32,16 @@ plot(st_geometry(wrld), col = "gray")
 
 #---Constitution de la base
 df_origin <- wrld %>%
-  rename(orig = iso3, continent_origin = continent, geometry_origin = geometry)
+  rename(orig = ISO_3_count, continent_origin = Region_Name, geometry_origin = geometry)
 
 df_dest <- wrld %>%
-  rename(dest = iso3, continent_dest = continent, geometry_dest = geometry)
+  rename(dest = ISO_3_count, continent_dest = Region_Name, geometry_dest = geometry)
 
 df_joined <- f2 %>%
   left_join(df_origin, by = "orig") %>%
   left_join(df_dest, by = "dest")
 
-df <- df_joined[,c("year0","orig","dest","name.x","name.y","flow", "continent_origin",
+df <- df_joined[,c("year0","orig","dest","Preferred_T.x","Preferred_T.y","flow", "continent_origin",
                    "continent_dest","geometry_origin","geometry_dest")]
 view(df)
 
