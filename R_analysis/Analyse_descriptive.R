@@ -125,16 +125,16 @@ top_routes <- df_routes %>%
 
 ggplot(top_routes, aes(
   x = reorder(paste(orig, "→", dest), total_flow),
-  y = total_flow
+  y = total_flow/1e3
 )) +
   geom_col(fill = "steelblue") +
   coord_flip() +
   labs(
-    title = "Top 10 routes migratoires",
     x = "Origine → Destination",
-    y = "Nombre de migrants"
+    y = "Nombre de migrants (en milliers)"
   ) +
-  theme_minimal(base_size = 13)
+  theme_minimal(base_size = 13)+
+  theme(aspect.ratio = 3/4)
 
 #--------------------Analyse continentale---------------------#
 
@@ -155,18 +155,19 @@ df_continent_flows %>%
   #slice_head(n = 10) %>%
   ggplot(aes(
     x = reorder(paste(continent_origin, "→", continent_dest), total_flow),
-    y = total_flow,
+    y = total_flow/1e3,
     fill = continent_origin,
   )) +
   geom_col() +
   coord_flip() +
   labs(
-    title = "Flux migratoires intercontinentaux (en moyenne)",
     x = "Origine → Destination",
-    y = "Nombre total de migrants",
+    y = "Nombre total de migrants (en milliers)",
     fill = "Continent d’origine"
   ) +
-  theme_minimal(base_size = 14)
+  theme_minimal(base_size = 14)+
+  theme(aspect.ratio = 3/4)
+
 
 
 #---Flux de sorties par continent au fil du temps------
@@ -242,13 +243,14 @@ ggplot(df_indexed, aes(x = year0, y = migration_index, color = continent_origin)
   geom_point(size = 2) +
   geom_hline(yintercept = 100, linetype = "dashed", color = "gray50") +
   labs(
-    title = "Évolution relative des flux migratoires sortants par continent (base 1990 = 100)",
     x = "Année",
     y = "Indice (1990 = 100)",
     color = "Continent d’origine"
   ) +
   theme_minimal(base_size = 13) +
-  theme(legend.position = "bottom")
+  theme(legend.position = "bottom", 
+  aspect.ratio = 3/4)
+
 
 
 #----Evolution relative depuis 1990 (flux entrants)--
