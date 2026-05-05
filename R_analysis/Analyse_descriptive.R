@@ -88,20 +88,23 @@ top_inflow_countries <- df_inflows %>%
 
 df_global_trends <- df_outflows %>%
   group_by(year0) %>%
+  st_drop_geometry() %>%
   summarise(
     total_inflow = sum(total_outflow, na.rm = TRUE)  
   )
 
 # Graphique d’évolution
 ggplot(df_global_trends, aes(x = year0)) +
-  geom_line(aes(y = total_inflow, color = "Entrants"), size = 1.2) +
+  # On divise par 1 000 000 pour passer en unité "Millions"
+  geom_line(aes(y = total_inflow / 1e6, color = "Entrants"), size = 1.2) +
   scale_color_manual(values = c("Entrants" = "darkgreen")) +
   labs(
-    title = "Évolution mondiale des flux migratoires",
-    x = "Année", y = "Nombre total de migrants",
+    x = "Année", 
+    y = "Nombre total de migrants (en millions)",
     color = "Type de flux"
   ) +
-  theme_minimal()
+  theme_minimal()+
+  theme(legend.position = "none",aspect.ratio = 3/4)
 
 
 # Total cumulé par paire de pays
