@@ -103,8 +103,10 @@ ggplot(df_global_trends, aes(x = year0)) +
     y = "Nombre total de migrants (en millions)",
     color = "Type de flux"
   ) +
-  theme_minimal()+
-  theme(legend.position = "none",aspect.ratio = 3/4)
+  theme_minimal(base_size = 14)+
+  theme(legend.position = "none",
+  aspect.ratio = 3/4)
+  
 
 
 # Total cumulé par paire de pays
