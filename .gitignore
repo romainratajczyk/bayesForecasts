@@ -14,7 +14,8 @@ notebooks/stan_outputs
 notebooks/stan_outputs_tmux
 bin/ 
 code_local/
-
+STAN/old_stan_codes
+notebooks/old_notebooks_Hurdle_ARX
 # Fichiers Python temporaires
 __pycache__/
 *.ipynb_checkpoints
