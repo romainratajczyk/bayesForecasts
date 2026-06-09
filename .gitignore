@@ -1,7 +1,7 @@
 data/.DS_Store
 
 # Fichiers de données à ignorer
-#*.csv
+*.csv
 *.xlsx
 .xls
 #data/
@@ -14,6 +14,13 @@ notebooks/stan_outputs
 notebooks/stan_outputs_tmux
 bin/ 
 code_local/
+STAN/old_stan_codes
+notebooks/old_notebooks_Hurdle_ARX
+figures_HMC/
+data/V-Dem-CY-Core-v16.csv
+data/UcdpPrioConflict_v25_1.csv
+data/
+
 
 # Fichiers Python temporaires
 __pycache__/
