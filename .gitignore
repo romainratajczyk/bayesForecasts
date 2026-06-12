@@ -1,7 +1,7 @@
 data/.DS_Store
 
 # Fichiers de données à ignorer
-*.csv
+#*.csv
 *.xlsx
 .xls
 #data/
@@ -19,13 +19,13 @@ notebooks/old_notebooks_Hurdle_ARX
 figures_HMC/
 data/V-Dem-CY-Core-v16.csv
 #data/UcdpPrioConflict_v25_1.csv
-data/
+# data/
 data/df_main_arX_hurdle_final_v3.csv
 
-notebooks/00_audit_data.ipynb
-notebooks/01_run_stan.ipynb
-notebooks/02_analysis.ipynb
-notebooks/dataset_production_finalstep2.py
+# notebooks/00_audit_data.ipynb
+# notebooks/01_run_stan.ipynb
+# notebooks/02_analysis.ipynb
+# notebooks/dataset_production_finalstep2.py
 
 
 
