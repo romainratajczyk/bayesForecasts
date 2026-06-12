@@ -1,7 +1,7 @@
 data/.DS_Store
 
 # Fichiers de données à ignorer
-*.csv
+.csv
 *.xlsx
 .xls
 #data/
@@ -18,8 +18,10 @@ STAN/old_stan_codes
 notebooks/old_notebooks_Hurdle_ARX
 figures_HMC/
 data/V-Dem-CY-Core-v16.csv
-data/UcdpPrioConflict_v25_1.csv
-data/
+#data/UcdpPrioConflict_v25_1.csv
+#data/
+data/df_main_arX_hurdle_final_v3.csv
+
 
 STAN/old_stan_codes
 notebooks/old_notebooks_Hurdle_ARX
