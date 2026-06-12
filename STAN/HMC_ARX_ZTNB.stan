@@ -177,6 +177,12 @@ model {
   tau_h_at       ~ normal(0, 0.25);
   gamma_h_at_raw ~ std_normal();
 
+  beta_h[1]     ~ normal(1.0, 1.0); // Prior positif pour logit_xgb 
+  #mu_beta_lag    ~ normal(2.0, 2.5); // definition du prior à discuter
+  #sigma_beta_lag ~ exponential(1);
+  #beta_lag_raw   ~ std_normal();
+
+// ########### ANCIEN CODE PRIORS HURDLE #############
   // liste ordonnée des variables Hurdle 
   // [1]  log_D_ij
   // [2]  log_D_ij_sq
@@ -189,23 +195,22 @@ model {
   // [9]  v2x_clphy_d_lag
   // [10] intensity_level_d_lag
   // [K_h=11] logit_rf
-  beta_h[1]       ~ normal(-0.5, 0.5); // 1. log_D_ij (friction spatiale négative)
-  beta_h[2]       ~ normal(-0.5, 0.5); // 2. log_D_ij_sq (non-linéarité distance)
-  beta_h[3]       ~ normal(0, 2);      // 3. COL_ij (passé colonial)
-  beta_h[4]       ~ normal(0, 2);      // 4. OL_ij (langue officielle commune)
-  beta_h[5:K_h-1] ~ normal(0, 1.0);   // 5-10. Variables géopolitiques standardisées
+  //beta_h[1]       ~ normal(-0.5, 0.5); // 1. log_D_ij (friction spatiale négative)
+  //beta_h[2]       ~ normal(-0.5, 0.5); // 2. log_D_ij_sq (non-linéarité distance)
+  //beta_h[3]       ~ normal(0, 2);      // 3. COL_ij (passé colonial)
+  //beta_h[4]       ~ normal(0, 2);      // 4. OL_ij (langue officielle commune)
+  //beta_h[5:K_h-1] ~ normal(0, 1.0);   // 5-10. Variables géopolitiques standardisées
                                         // (v2x_polyarchy_o, v2x_clphy_o,
                                         //  intensity_level_o, v2x_polyarchy_d,
                                         //  v2x_clphy_d, intensity_level_d)
-  beta_h[K_h]     ~ normal(1.0, 1.0); // K_h=11. logit_rf — prior positif forcé
+  //beta_h[K_h]     ~ normal(1.0, 1.0); // K_h=11. logit_rf — prior positif forcé
 
   //beta_h[7]      ~ normal(1.0, 1.0); // Prior strictement positif forcé pour log_TC_lag
   //beta_h[7:K_h-1]  ~ normal(0, 1.0); // Régularisation des 8 variables géopolitiques dynamiques (indices 9 à K_h) (déjà standardisée, donc normal(0,1))
   //beta_h[K_h]     ~ normal(1.0, 1.0); // Prior positif forcé pour 'logit_rf'. Le ML est présumé prédictif
+// ##################################################
 
-  mu_beta_lag    ~ normal(2.0, 2.5); // definition du prior à discuter
-  sigma_beta_lag ~ exponential(1);
-  beta_lag_raw   ~ std_normal();
+
 
   // B. Priors Volume (Emission / Attraction via Hyper-régression)
   intercept_em ~ normal(0, 1);

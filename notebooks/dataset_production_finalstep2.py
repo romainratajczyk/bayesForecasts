@@ -36,6 +36,8 @@ PAYS_EXCLURE = {
     'CLI',  # Territoire australien
 }
 
+# données de PIB à intégrer: MYT VIR CLI GUM au moins à partir de 2000-2010
+
 df = df[
     ~df['orig'].isin(PAYS_EXCLURE) &
     ~df['dest'].isin(PAYS_EXCLURE)
