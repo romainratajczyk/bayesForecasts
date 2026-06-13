@@ -4,7 +4,7 @@
 Projet de recherche en groupe supervisé par Nicolas Chopin (CREST), réalisé à l'ENSAE.   
 *Membres du groupe: Louise, Romain, Ishagh, Varnel*.
 
-# TL;DR : 
+# TL;DR :  
 
 Ce projet développe une architecture de prédiction Out-of-Sample (OOS) des flux migratoires, dépassant les modèles gravitaires classiques par le développement de deux **modèles bayésiens hiérarchiques** échantillonnés via Hamiltonian Monte Carlo (Stan).
 
