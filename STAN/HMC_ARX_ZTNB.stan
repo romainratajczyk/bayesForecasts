@@ -9,10 +9,11 @@
 // Point3: Enfin, traiter de manière hiérarchique (comme les autres paramètres) le coefficient beta_lag du Hurdle. 
 
 /*
-Bayesian Hierarchical ARX Hurdle Model for Gravity Migration
-Component A: Hurdle (Hierarchical Bernoulli)
-Component B: Volume (Hierarchical ARX Zero-Truncated Negative Binomial avec Effets Origine/Destination)
-Component C: Geographic Heteroscedasticity (Dispersion clustering)
+Bayesian Hierarchical ARX Hurdle Model for Migration Forecasts
+Component A: Hurdle (XGB-augmented)
+Component B: ARX(1) hystérésis et inertie migratoire
+Volume (Hierarchical ARX Zero-Truncated Negative Binomial avec Effets Origine/Destination)
+Component C:Volume (Hierarchical ARX Zero-Truncated Negative Binomial avec Effets Origine/Destination) with geographic heterogeneities (M49 clusters) 
 
 */
 
@@ -32,7 +33,7 @@ data {
   array[N_h] int<lower=1, upper=N_pays> orig_id_h; 
   array[N_h] int<lower=1, upper=N_pays> dest_id_h;
   array[N_h] int<lower=0, upper=1>   is_mig;
-  vector[N_h]                        is_mig_lag;
+  //vector[N_h]                        is_mig_lag;
   matrix[N_h, K_h]                   X_h;
 
   //  Volume ZTNB: restriction à N^*
@@ -48,7 +49,7 @@ data {
 
   //  Clusters géographiques (M49 onusiens)
   int<lower=1>                       K_clusters;
-  array[D_h] int<lower=1, upper=K_clusters> cluster_h;
+  //array[D_h] int<lower=1, upper=K_clusters> cluster_h;
   array[D_v] int<lower=1, upper=K_clusters> cluster_v;
 
   //  Test OOS
@@ -58,7 +59,7 @@ data {
   array[N_test] int<lower=1, upper=N_pays>  orig_id_test_v;
   array[N_test] int<lower=1, upper=N_pays>  dest_id_test_v;
   matrix[N_test, K_h]                       X_h_test;
-  vector[N_test]                            is_mig_lag_test;
+  //vector[N_test]                            is_mig_lag_test;
   matrix[N_test, K_v]                       X_v_test;
   vector[N_test]                            log_flow_lag_test;
   array[N_test] int<lower=1, upper=K_clusters> cluster_test_h;
@@ -75,9 +76,9 @@ parameters {
   //real<lower=0> tau_alpha;
 
   vector[K_h] beta_h; // variables de X_h du hurdle
-  real mu_beta_lag;                     
-  real<lower=0> sigma_beta_lag;         
-  vector[K_clusters] beta_lag_raw;     // autant de beta_lag que de clusters M49
+  //real mu_beta_lag;                     
+  //real<lower=0> sigma_beta_lag;         
+  //vector[K_clusters] beta_lag_raw;     // autant de beta_lag que de clusters M49
   // vector[D_h] alpha_raw; // un alpha_raw par dyade (l'ADN d'une dyade, généré d'un prior)
 
   // Hyper-parametres Hurdle (Emission/Attraction)
@@ -105,7 +106,7 @@ parameters {
   vector[K_v] beta_grav;
   real rho_global_raw;
   real<lower=0> tau_rho;
-  vector[D_v] rho_raw;
+  vector[K_clusters] rho_raw; // passer en K_clusters, 72 000 paramètres mal identifiés c'est pas super.
 
   // C. Dispersion (Phi remplace Sigma la variance du modèle log-normal précédent)
   real<lower=0> phi_disp_global;
@@ -120,7 +121,7 @@ transformed parameters {
   //vector[D_h] alpha_d;
   //for (d in 1:D_h)
   //  alpha_d[d] = alpha_global + tau_alpha * alpha_raw[d];
-  vector[K_clusters] beta_lag_m49 = mu_beta_lag + sigma_beta_lag * beta_lag_raw;
+  //vector[K_clusters] beta_lag_m49 = mu_beta_lag + sigma_beta_lag * beta_lag_raw;
 
   // Calcul des effets pays Hurdle
   vector[N_pays] mu_h_em_vec = intercept_h_em + Z_em * theta_h_em;
@@ -141,7 +142,7 @@ transformed parameters {
   vector[N_pays] gamma_at = mu_at_vec + tau_at * gamma_at_raw;
 
  
-  vector[D_v] rho_d = tanh(rho_global_raw + tau_rho * rho_raw);
+  vector[K_clusters] rho_m49 = tanh(rho_global_raw + tau_rho * rho_raw);
 
   // C. Dispersion Hiérarchique
 
@@ -153,16 +154,16 @@ transformed parameters {
 
 
 
-  vector[N_h] lag_effect = beta_lag_m49[cluster_h[dyad_id_h]] .* is_mig_lag;
+  //vector[N_h] lag_effect = beta_lag_m49[cluster_h[dyad_id_h]] .* is_mig_lag;
 
   // LOGIT HURDLE 
-  vector[N_h] logit_p = alpha_h_em[orig_id_h] + gamma_h_at[dest_id_h] + X_h * beta_h + lag_effect;
+  vector[N_h] logit_p = alpha_h_em[orig_id_h] + gamma_h_at[dest_id_h] + X_h * beta_h; //+ lag_effect;
 
   // Substitution dyadique par l'addition des marginales : alpha_i + gamma_j
   vector[N_v] mu_dt = alpha_em[orig_id_v] + gamma_at[dest_id_v] + X_v * beta_grav;
 
 
-  vector[N_v] ar_pred = mu_dt + rho_d[dyad_id_v] .* (log_flow_lag - mu_dt);
+  vector[N_v] ar_pred = mu_dt + rho_m49[cluster_v[dyad_id_v]] .* (log_flow_lag - mu_dt);
 }
 
 model {
@@ -178,9 +179,9 @@ model {
   gamma_h_at_raw ~ std_normal();
 
   beta_h[1]     ~ normal(1.0, 1.0); // Prior positif pour logit_xgb 
-  #mu_beta_lag    ~ normal(2.0, 2.5); // definition du prior à discuter
-  #sigma_beta_lag ~ exponential(1);
-  #beta_lag_raw   ~ std_normal();
+  //mu_beta_lag    ~ normal(2.0, 2.5); // definition du prior à discuter
+  //sigma_beta_lag ~ exponential(1);
+  //beta_lag_raw   ~ std_normal();
 
 // ########### ANCIEN CODE PRIORS HURDLE #############
   // liste ordonnée des variables Hurdle 
@@ -235,8 +236,9 @@ model {
   // C. Priors Dispersion
   phi_disp_global  ~ exponential(1);
 // prior vectorisé
-  phi_disp_cluster ~ normal(phi_disp_global, 0.5);
-  tau_phi_disp     ~ exponential(2);
+  // ancien prior avec négatifs: phi_disp_cluster ~ normal(phi_disp_global, 0.5); 
+  phi_disp_cluster ~ lognormal(log(phi_disp_global + 1e-8), 0.5);
+  tau_phi_disp     ~ exponential(5); // forcer le shrinkage vers le niveau cluster M49, l'effet dyadique sortira s'il existe vraiment
   phi_disp_raw     ~ std_normal();
 
   // Vraisemblances
@@ -284,8 +286,8 @@ generated quantities {
     int k = cluster_test_h[n];
 
     real logit_p_test = alpha_h_em[orig_id_test_v[n]] + gamma_h_at[dest_id_test_v[n]]
-                        + dot_product(X_h_test[n], beta_h)
-                        + beta_lag_m49[k] * is_mig_lag_test[n];
+                        + dot_product(X_h_test[n], beta_h);
+                        //+ beta_lag_m49[k] * is_mig_lag_test[n];
     prob_mig_test[n] = inv_logit(logit_p_test);
 
     // Résolution immédiate des effets pays (valide même pour une dyade jamais vue en Train)
@@ -295,7 +297,7 @@ generated quantities {
       // Application stricte de l'AR(1) inconditionnelle. 
       // Si la route est nouvelle (log_flow_lag == 0), la pénalité pionnière 
       // s'applique nativement : mu_full * (1 - rho_d)
-      mu_dt_test[n] = mu_full + rho_d[d_v] * (log_flow_lag_test[n] - mu_full);
+      mu_dt_test[n] = mu_full + rho_m49[k] * (log_flow_lag_test[n] - mu_full);
       phi_test[n] = phi_disp_d[d_v];
     } else {
       // Dyades totalement inconnues en entraînement : application de l'inertie globale
