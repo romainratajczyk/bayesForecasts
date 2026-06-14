@@ -6,10 +6,6 @@
 #       format_name: percent
 #       format_version: '1.3'
 #       jupytext_version: 1.19.3
-#   kernelspec:
-#     display_name: Python 3
-#     language: python
-#     name: python3
 # ---
 
 # %%
@@ -19,24 +15,30 @@ from cmdstanpy import CmdStanModel
 
 cmdstan_base_dir = "/home/onyxia/work/cmdstan"
 
-# Détection automatique du sous-dossier CmdStan
+# Détection et assignation forcée du chemin
 try:
     installed_versions = [d for d in os.listdir(cmdstan_base_dir) if d.startswith("cmdstan-")]
     cmdstan_path = os.path.join(cmdstan_base_dir, installed_versions[0])
     cmdstanpy.set_cmdstan_path(cmdstan_path)
-    print(f"Liaison CmdStan établie sur : {cmdstan_path}")
-except IndexError:
-    raise FileNotFoundError("Les binaires CmdStan sont introuvables. Exécutez cmdstanpy.install_cmdstan(dir=cmdstan_base_dir) au préalable.")
+    print(f"Liaison matérielle CmdStan établie sur : {cmdstan_path}")
+except (IndexError, FileNotFoundError):
+    raise FileNotFoundError(f"Binaires CmdStan introuvables dans {cmdstan_base_dir}.")
 
-# %%
+# Instanciation du modèle (la compilation fonctionnera désormais)
+# model = CmdStanModel(stan_file='STAN/HMC_ARX_ZTNB.stan')
 import warnings
+import os
 import pandas as pd
 import numpy as np
+import cmdstanpy
 import xgboost as xgb
-from sklearn.metrics import roc_curve , roc_auc_score
+import re
+import matplotlib.pyplot as plt
+from cmdstanpy import CmdStanModel
+from sklearn.metrics import roc_curve , roc_auc_score, accuracy_score
 from itertools import product
 
-#from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier
 from scipy.special import logit as scipy_logit
 
 warnings.filterwarnings('ignore')
@@ -47,6 +49,7 @@ STAN_FILE  = "../STAN/HMC_ARX_ZTNB.stan"
 OUTPUT_DIR = "./stan_outputs_tmux"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
+
 # %% [markdown]
 # ### tester gdpcap_lag1 pour l'horizon 1 
 # ### ajouter LA LL et urban pour PSE et DOM-TOM
@@ -55,12 +58,13 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 # Sampling parameters
 N_CHAINS        = 4
 PARALLEL_CHAINS = 4
-ITER_WARMUP     = 1000
-ITER_SAMPLING   = 1300
+ITER_WARMUP     = 800
+ITER_SAMPLING   = 1000
 THIN            = 2
 MAX_TREEDEPTH   = 12
-ADAPT_DELTA     = 0.95
+ADAPT_DELTA     = 0.90
 N_DRAWS         = ITER_SAMPLING // THIN
+
 
 # %%
 df_main = pd.read_csv(DATA_PATH)
@@ -77,6 +81,90 @@ df = df[
 
 df = df.sort_values(['orig', 'dest', 'year']).reset_index(drop=True)
 print(f"{df['orig'].nunique()} pays après exclusions")
+
+# %%
+
+# SUBSET DE PAYS (modifier RUN_SIZE uniquement)
+# 1 = 70 pays  
+# 2 = 110 pays 
+# 3 = 140 pays 
+# 4 = run complet
+
+RUN_SIZE = 4
+
+PAYS_SUBSET_70 = {
+    'GBR', 'SWE', 'NOR',
+    'ITA', 'ESP', 'GRC',
+    'FRA', 'DEU', 'NLD',
+    'POL', 'ROU', 'UKR',
+    'MAR', 'EGY', 'TUN',
+    'NGA', 'GHA', 'SEN', 'MLI',
+    'ETH', 'KEN', 'SOM', 'TZA',
+    'COD', 'CMR', 'CAF',
+    'ZAF', 'ZMB',
+    'USA', 'CAN', 'MEX',
+    'GTM', 'HND'}
+#     'HTI', 'CUB', 'DOM',
+#     'BRA', 'COL', 'ARG', 'VEN', 'BOL',
+#     'CHN', 'JPN', 'KOR',
+#     'IND', 'PAK', 'BGD', 'AFG',
+#     'IDN', 'PHL', 'THA', 'MMR',
+#     'KAZ', 'UZB',
+#     'TUR', 'SAU', 'IRQ', 'SYR', 'ISR',
+#     'AUS', 'NZL', 'VNM','RUS', 'SLV','CHL','DNK'
+# }
+
+PAYS_SUBSET_110 = PAYS_SUBSET_70 | {
+    'DNK', 'FIN', 'IRL',
+    'PRT', 'HRV', 'SRB',
+    'BEL', 'CHE', 'AUT',
+    'CZE', 'HUN', 'BGR', 'BLR',
+    'DZA', 'LBY',
+    'CIV', 'GIN', 'BFA', 'NER',
+    'RWA', 'UGA', 'MOZ', 'ZWE',
+    'AGO', 'GAB', 'COG',
+    'NAM', 'BWA',
+    'SLV', 'NIC', 'CRI',
+    'JAM', 'TTO',
+    'CHL', 'PER', 'ECU', 'PRY',
+    'MNG', 'PRK',
+    'IRN', 'LKA', 'NPL',
+    'VNM', 'MYS', 'KHM',
+    'KGZ', 'TJK',
+    'JOR', 'LBN', 'YEM', 'ARE',
+    'PNG', 'FJI',
+}
+
+PAYS_SUBSET_140 = PAYS_SUBSET_110 | {
+    'EST', 'LVA', 'LTU', 'ISL',
+    'ALB', 'MKD', 'BIH', 'MLT',
+    'MDA', 'SVK',
+    'SDN', 'ESH',
+    'GMB', 'LBR', 'SLE', 'CPV', 'GNB', 'BEN', 'TGO',
+    'BDI', 'ERI', 'DJI', 'MWI', 'MDG', 'MUS',
+    'TCD', 'GNQ', 'STP',
+    'LSO', 'SWZ',
+    'BLZ', 'PAN',
+    'BHS', 'BRB', 'GRD', 'KNA', 'LCA', 'VCT', 'DMA',
+    'GUY', 'SUR', 'URY', 'GUF',
+    'HKG', 'MAC',
+    'BTN', 'MDV',
+    'SGP', 'BRN', 'LAO',
+    'TKM',
+    'ARM', 'AZE', 'GEO', 'BHR', 'CYP', 'KWT', 'OMN', 'QAT', 'PSE',
+    'WSM', 'TON', 'SLB', 'VUT', 'KIR',
+}
+
+_SUBSETS = {1: PAYS_SUBSET_70, 2: PAYS_SUBSET_110, 3: PAYS_SUBSET_140, 4: None}
+_LABELS  = {1: '70 pays', 2: '110 pays', 3: '140 pays', 4: '192 pays (complet)'}
+
+assert RUN_SIZE in _SUBSETS, "RUN_SIZE doit valoir 1, 2, 3 ou 4"
+
+if RUN_SIZE < 4:
+    pays_subset = _SUBSETS[RUN_SIZE]
+    df = df[df['orig'].isin(pays_subset) & df['dest'].isin(pays_subset)].copy()
+
+print(f"Run : {_LABELS[RUN_SIZE]} — {df['orig'].nunique()} pays effectifs dans le panel")
 
 # %%
 # clustering M49
@@ -180,7 +268,7 @@ X_VOL_COLS = [
 ]
 
 K_grav = len(X_VOL_COLS)
-K_h = len(HURDLE_VARS)
+K_h = len(HURDLE_VARS) # K_h doit être relu après, on ajoutera notamment 'logit_xgb'
 
 df_train = df[df['year'] <= 2010].copy()
 df_test = df[df['year'] == 2015].copy()
@@ -538,6 +626,7 @@ Z_at = Z_mat
 # %%
 df_hurdle = df_hurdle.replace([np.inf, -np.inf], np.nan).dropna(subset=HURDLE_REQUIRED)
 df_volume = df_volume.replace([np.inf, -np.inf], np.nan).dropna(subset=VOLUME_REQUIRED)
+N_h, N_v = len(df_hurdle), len(df_volume)
 assert np.isinf(df_volume[X_VOL_COLS].values).sum() == 0
 
 stan_data = {
@@ -547,9 +636,9 @@ stan_data = {
     'K_h': int(K_h),
     'dyad_id_h': df_hurdle['dyad_id_h'].astype(int).tolist(),
     'is_mig': df_hurdle['is_migration'].astype(int).tolist(),
-    'is_mig_lag': df_hurdle['is_mig_lag'].astype(float).tolist(),
+    #'is_mig_lag': df_hurdle['is_mig_lag'].astype(float).tolist(),
     'X_h': X_h_std.tolist(),
-    'cluster_h': cluster_h.tolist(),
+    #'cluster_h': cluster_h.tolist(),
     'K_Z': int(K_Z),
     'Z_em': Z_em.tolist(),
     'Z_at': Z_at.tolist(),
@@ -575,7 +664,7 @@ stan_data = {
     'dest_id_h': df_hurdle['dest_id_h'].astype(int).tolist(),
     'X_h_test': X_test_h_std.tolist(),
     'X_v_test': X_test_v_std.tolist(),
-    'is_mig_lag_test': df_test['is_mig_lag'].fillna(0.0).tolist(),
+    #'is_mig_lag_test': df_test['is_mig_lag'].fillna(0.0).tolist(),
     'log_flow_lag_test': df_test['log_flow_lag_clean'].tolist(),
     'cluster_test_h': cluster_test_h.tolist(),
 }
@@ -626,3 +715,4 @@ for i, old_path in enumerate(fit.runset.csv_files):
     renamed_csvs.append(new_path)
 
 print(f"Outputs : {custom_prefix}_chain*.csv")
+
