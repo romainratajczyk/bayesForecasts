@@ -26,6 +26,8 @@ except (IndexError, FileNotFoundError):
 
 # Instanciation du modèle (la compilation fonctionnera désormais)
 # model = CmdStanModel(stan_file='STAN/HMC_ARX_ZTNB.stan')
+
+# %%
 import warnings
 import os
 import pandas as pd
@@ -51,15 +53,17 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 
 # %% [markdown]
-# ### tester gdpcap_lag1 pour l'horizon 1 
+# ### tester gdpcap_lag1 pour l'horizon 1; réfléchir à la dimension temporelle (prédiction 2011-2014? =/= 2015?)
 # ### ajouter LA LL et urban pour PSE et DOM-TOM
+# ### résoudre faiblesse hyper-regression 
+# ### trancher sur la méthode post-hoc W_FP
 
 # %%
 # Sampling parameters
-N_CHAINS        = 4
-PARALLEL_CHAINS = 4
-ITER_WARMUP     = 800
-ITER_SAMPLING   = 1000
+N_CHAINS        = 2
+PARALLEL_CHAINS = 2
+ITER_WARMUP     = 600
+ITER_SAMPLING   = 800
 THIN            = 2
 MAX_TREEDEPTH   = 12
 ADAPT_DELTA     = 0.90
@@ -90,7 +94,7 @@ print(f"{df['orig'].nunique()} pays après exclusions")
 # 3 = 140 pays 
 # 4 = run complet
 
-RUN_SIZE = 4
+RUN_SIZE = 2
 
 PAYS_SUBSET_70 = {
     'GBR', 'SWE', 'NOR',
@@ -103,16 +107,16 @@ PAYS_SUBSET_70 = {
     'COD', 'CMR', 'CAF',
     'ZAF', 'ZMB',
     'USA', 'CAN', 'MEX',
-    'GTM', 'HND'}
-#     'HTI', 'CUB', 'DOM',
-#     'BRA', 'COL', 'ARG', 'VEN', 'BOL',
-#     'CHN', 'JPN', 'KOR',
-#     'IND', 'PAK', 'BGD', 'AFG',
-#     'IDN', 'PHL', 'THA', 'MMR',
-#     'KAZ', 'UZB',
-#     'TUR', 'SAU', 'IRQ', 'SYR', 'ISR',
-#     'AUS', 'NZL', 'VNM','RUS', 'SLV','CHL','DNK'
-# }
+    'GTM', 'HND',
+    'HTI', 'CUB', 'DOM',
+    'BRA', 'COL', 'ARG', 'VEN', 'BOL',
+    'CHN', 'JPN', 'KOR',
+    'IND', 'PAK', 'BGD', 'AFG',
+    'IDN', 'PHL', 'THA', 'MMR',
+    'KAZ', 'UZB',
+    'TUR', 'SAU', 'IRQ', 'SYR', 'ISR',
+    'AUS', 'NZL', 'VNM','RUS', 'SLV','CHL','DNK'
+}
 
 PAYS_SUBSET_110 = PAYS_SUBSET_70 | {
     'DNK', 'FIN', 'IRL',
@@ -145,14 +149,14 @@ PAYS_SUBSET_140 = PAYS_SUBSET_110 | {
     'TCD', 'GNQ', 'STP',
     'LSO', 'SWZ',
     'BLZ', 'PAN',
-    'BHS', 'BRB', 'GRD', 'KNA', 'LCA', 'VCT', 'DMA',
+    #'BHS', 'BRB', 'GRD', 'KNA', 'LCA', 'VCT', 'DMA',
     'GUY', 'SUR', 'URY', 'GUF',
     'HKG', 'MAC',
     'BTN', 'MDV',
     'SGP', 'BRN', 'LAO',
-    'TKM',
-    'ARM', 'AZE', 'GEO', 'BHR', 'CYP', 'KWT', 'OMN', 'QAT', 'PSE',
-    'WSM', 'TON', 'SLB', 'VUT', 'KIR',
+    'TKM'
+    #'ARM', 'AZE', 'GEO', 'BHR', 'CYP', 'KWT', 'OMN', 'QAT', 'PSE',
+    #'WSM', 'TON', 'SLB', 'VUT', 'KIR',
 }
 
 _SUBSETS = {1: PAYS_SUBSET_70, 2: PAYS_SUBSET_110, 3: PAYS_SUBSET_140, 4: None}
