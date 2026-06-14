@@ -241,16 +241,23 @@ model {
   tau_phi_disp     ~ exponential(5); // forcer le shrinkage vers le niveau cluster M49, l'effet dyadique sortira s'il existe vraiment
   phi_disp_raw     ~ std_normal();
 
-  // Vraisemblances
+  // Vraisemblance Hurdle
   is_mig ~ bernoulli_logit(logit_p);
 
-  // Boucle for inévitable : neg_binomial_2_log_lpmf n'est pas vectorisé par Stan
-  // quand phi varie par observation (phi_disp_d[d] dyadique)
-  for (n in 1:N_v) {
-    int d = dyad_id_v[n];
-    target += neg_binomial_2_log_lpmf(flow[n] | ar_pred[n], phi_disp_d[d]);
-    target += -log1m_exp(neg_binomial_2_log_lpmf(0 | ar_pred[n], phi_disp_d[d])); // += - car -= pas géré par Stan
-  }
+  // Vraisemblance Volume (Vectorisation intégrale)
+  
+  // Expansion du paramètre de dispersion à la dimension N_v
+  vector[N_v] phi_full = phi_disp_d[dyad_id_v];
+  
+  // Évaluation de la vraisemblance non-tronquée (1 seul noeud de diff)
+  target += neg_binomial_2_log_lpmf(flow | ar_pred, phi_full);
+  
+  // Évaluation vectorielle de la pénalité de troncature (ZTNB)
+  // Calcul de log(P(Y=0)) pour la ZTNB
+  vector[N_v] log_p0 = phi_full .* (log(phi_full) - log(phi_full + exp(ar_pred)));
+  
+  // Somme vectorielle des pénalités
+  target += -sum(log1m_exp(log_p0));
 }
 
 generated quantities {
