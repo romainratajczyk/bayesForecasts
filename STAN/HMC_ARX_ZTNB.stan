@@ -238,7 +238,7 @@ model {
 // prior vectorisé
   // ancien prior avec négatifs: phi_disp_cluster ~ normal(phi_disp_global, 0.5); 
   phi_disp_cluster ~ lognormal(log(phi_disp_global + 1e-8), 0.5);
-  tau_phi_disp     ~ exponential(5); // forcer le shrinkage vers le niveau cluster M49, l'effet dyadique sortira s'il existe vraiment
+  tau_phi_disp     ~ exponential(5); // forcer le shrinkage vers le niveau cluster M49, l'effet dyadique sortira s'il existe vraiment. Très régularisateur : essayer aussi normal(,) avec <lower=0> (Gelman)
   phi_disp_raw     ~ std_normal();
 
   // Vraisemblance Hurdle
