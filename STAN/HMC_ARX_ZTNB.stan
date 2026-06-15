@@ -226,9 +226,10 @@ model {
   
   // Priors ciblés pour beta_grav (Volume)
   beta_grav[1]     ~ normal(-0.5, 0.5); // 1. log_D_ij (Prior négatif pour la friction spatiale)
-  beta_grav[2:4]   ~ normal(0, 2.0);    // 2-4. LB_ij, OL_ij, COL_ij (Proximité historique/culturelle)
-  beta_grav[5:6]   ~ normal(0, 1.0);    // 5-6. t_2000, t_2000_sq (Non-linéarités temporelles)
-  beta_grav[7:K_v] ~ normal(0, 1.0);    // 7-K_v. Variables géopolitiques dynamiques standardisées
+  beta_grav[2]     ~ normal(-0.5, 0.5); // 2. log_D_ij_sq (Prior négatif pour la non-linéarité distance)
+  beta_grav[3:5]   ~ normal(0, 2.0);    // 3-5. LB_ij, OL_ij, COL_ij (Proximité historique/culturelle)
+  beta_grav[6:7]   ~ normal(0, 1.0);    // 6-7. t_2000, t_2000_sq (Non-linéarités temporelles)
+  beta_grav[8:K_v] ~ normal(0, 1.0);    // 8-K_v. Variables géopolitiques dynamiques standardisées
   rho_global_raw ~ normal(0.5, 0.5);
   tau_rho        ~ exponential(2);
   rho_raw        ~ std_normal();
@@ -238,7 +239,7 @@ model {
 // prior vectorisé
   // ancien prior avec négatifs: phi_disp_cluster ~ normal(phi_disp_global, 0.5); 
   phi_disp_cluster ~ lognormal(log(phi_disp_global + 1e-8), 0.5);
-  tau_phi_disp     ~ exponential(5); // forcer le shrinkage vers le niveau cluster M49, l'effet dyadique sortira s'il existe vraiment. Très régularisateur : essayer aussi normal(,) avec <lower=0> (Gelman)
+  tau_phi_disp     ~ exponential(5); // forcer le shrinkage vers le niveau cluster M49, l'effet dyadique sortira s'il existe vraiment
   phi_disp_raw     ~ std_normal();
 
   // Vraisemblance Hurdle
