@@ -255,8 +255,7 @@ model {
   
   // Évaluation vectorielle de la pénalité de troncature (ZTNB)
   // Calcul de log(P(Y=0)) pour la ZTNB
-  vector[N_v] log_p0 = phi_full .* (log(phi_full) - log(phi_full + exp(ar_pred)));
-  
+  vector[N_v] log_p0 = phi_full .* (log(phi_full) - log_sum_exp(log(phi_full), ar_pred));  
   // Somme vectorielle des pénalités
   target += -sum(log1m_exp(log_p0));
 }
