@@ -1,8 +1,8 @@
 
 # Prédiction bayésienne des flux migratoires internationaux 
 
-Projet de recherche en groupe supervisé par Nicolas Chopin (CREST), réalisé à l'ENSAE.   
-*Membres du groupe: Louise, Romain, Ishagh, Varnel*.
+Projet de recherche supervisé par Nicolas Chopin (CREST), réalisé à l'ENSAE.   
+
 
 # TL;DR :  
 
@@ -168,11 +168,6 @@ L'inférence simultanée repose sur une très-haute-dimension (pour 190 pays) :
 **Total : $\sim 90\ 000$ dimensions explorées simultanément par Hamiltonian Monte Carlo.**
 *Estimation RAM : 50-64 Go pour être très confortable et robuste aux pics et aux "Silent Kills" du cluster Onyxia-GENES. Plus de 128 Go nécessaires pour extraire TOUTES les variables samplées par Stan (pour 190 pays), le code actuel ne retire que celles importantes pour les prédictions.*    
 
-
-***Auteurs***
-
-Projet réalisé dans le cadre du cours de Statistique Appliquée (ENSAE) par :
-Louise, Romain, Ishagh, Varnel
 
 
 *Dernière mise à jour : 10 Avril 2026*
