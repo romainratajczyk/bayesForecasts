@@ -36,7 +36,8 @@ __pycache__/
 *.ipynb_checkpoints
 .venv/
 .env
-
+*.pages
+bayesTemp/
 # Fichiers VSCode
 .vscode/ 
 

@@ -17,6 +17,29 @@ Component C:Volume (Hierarchical ARX Zero-Truncated Negative Binomial avec Effet
 
 */
 
+functions {
+  real partial_ztnb_sum(array[] int slice_flow, 
+                        int start, int end, 
+                        vector ar_pred_full, 
+                        vector phi_full) {
+    real lp = 0;
+    
+    // Extraction des sous-vecteurs pour le thread courant
+    int len = end - start + 1;
+    vector[len] ar_pred = ar_pred_full[start:end];
+    vector[len] phi = phi_full[start:end];
+    
+    // 1. Vraisemblance non-tronquée (Vectorisée localement)
+    lp += neg_binomial_2_log_lpmf(slice_flow | ar_pred, phi);
+    
+    // 2. Troncature sécurisée
+    vector[len] log_p0 = phi .* (log(phi) - log_sum_exp(log(phi), ar_pred));
+    lp += -sum(log1m_exp(log_p0));
+    
+    return lp;
+  }
+}
+
 data {
   // Paramètres dimensionnels 
   int<lower=1> N_pays;
@@ -26,15 +49,15 @@ data {
   matrix[N_pays, K_Z] Z_at;
 
   // Hurdle (classification binaire avec les variables X_h et is_mig)
-  int<lower=1> N_h;
-  int<lower=1> D_h;
-  int<lower=1> K_h;
-  array[N_h] int<lower=1, upper=D_h> dyad_id_h;
-  array[N_h] int<lower=1, upper=N_pays> orig_id_h; 
-  array[N_h] int<lower=1, upper=N_pays> dest_id_h;
-  array[N_h] int<lower=0, upper=1>   is_mig;
+  //int<lower=1> N_h;
+  //int<lower=1> D_h;
+  //int<lower=1> K_h;
+  //array[N_h] int<lower=1, upper=D_h> dyad_id_h;
+  //array[N_h] int<lower=1, upper=N_pays> orig_id_h; 
+  //array[N_h] int<lower=1, upper=N_pays> dest_id_h;
+  //array[N_h] int<lower=0, upper=1>   is_mig;
   //vector[N_h]                        is_mig_lag;
-  matrix[N_h, K_h]                   X_h;
+  //matrix[N_h, K_h]                   X_h;
 
   //  Volume ZTNB: restriction à N^*
   int<lower=1> N_v;
@@ -54,11 +77,11 @@ data {
 
   //  Test OOS
   int<lower=0>                       N_test;
-  array[N_test] int<lower=1, upper=D_h>     dyad_id_test_h;
+  //array[N_test] int<lower=1, upper=D_h>     dyad_id_test_h;
   array[N_test] int<lower=0, upper=D_v>     dyad_id_test_v;
   array[N_test] int<lower=1, upper=N_pays>  orig_id_test_v;
   array[N_test] int<lower=1, upper=N_pays>  dest_id_test_v;
-  matrix[N_test, K_h]                       X_h_test;
+  //matrix[N_test, K_h]                       X_h_test;
   //vector[N_test]                            is_mig_lag_test;
   matrix[N_test, K_v]                       X_v_test;
   vector[N_test]                            log_flow_lag_test;
@@ -75,22 +98,22 @@ parameters {
   //real alpha_global;
   //real<lower=0> tau_alpha;
 
-  vector[K_h] beta_h; // variables de X_h du hurdle
+  //vector[K_h] beta_h; // variables de X_h du hurdle
   //real mu_beta_lag;                     
   //real<lower=0> sigma_beta_lag;         
   //vector[K_clusters] beta_lag_raw;     // autant de beta_lag que de clusters M49
   // vector[D_h] alpha_raw; // un alpha_raw par dyade (l'ADN d'une dyade, généré d'un prior)
 
   // Hyper-parametres Hurdle (Emission/Attraction)
-  real intercept_h_em;
-  vector[K_Z] theta_h_em;
-  real<lower=0> tau_h_em;
-  vector[N_pays] alpha_h_em_raw; 
+  //real intercept_h_em;
+  //vector[K_Z] theta_h_em;
+  //real<lower=0> tau_h_em;
+  //vector[N_pays] alpha_h_em_raw; 
   
-  real intercept_h_at;
-  vector[K_Z] theta_h_at;
-  real<lower=0> tau_h_at;
-  vector[N_pays] gamma_h_at_raw;
+  //real intercept_h_at;
+  //vector[K_Z] theta_h_at;
+  //real<lower=0> tau_h_at;
+  //vector[N_pays] gamma_h_at_raw;
 
   // B. Volume ARX (Effets Emission/Attraction)
   real intercept_em;
@@ -115,7 +138,7 @@ parameters {
   real<lower=0> tau_phi_disp;           
 }
 
-transformed parameters {
+transformed parameters { // bottleneck principal 
   // A. Prédicteurs Hurdle
   
   //vector[D_h] alpha_d;
@@ -124,11 +147,11 @@ transformed parameters {
   //vector[K_clusters] beta_lag_m49 = mu_beta_lag + sigma_beta_lag * beta_lag_raw;
 
   // Calcul des effets pays Hurdle
-  vector[N_pays] mu_h_em_vec = intercept_h_em + Z_em * theta_h_em;
-  vector[N_pays] mu_h_at_vec = intercept_h_at + Z_at * theta_h_at;
+  //vector[N_pays] mu_h_em_vec = intercept_h_em + Z_em * theta_h_em;
+  //vector[N_pays] mu_h_at_vec = intercept_h_at + Z_at * theta_h_at;
   
-  vector[N_pays] alpha_h_em = mu_h_em_vec + tau_h_em * alpha_h_em_raw;
-  vector[N_pays] gamma_h_at = mu_h_at_vec + tau_h_at * gamma_h_at_raw;
+  //vector[N_pays] alpha_h_em = mu_h_em_vec + tau_h_em * alpha_h_em_raw;
+  //vector[N_pays] gamma_h_at = mu_h_at_vec + tau_h_at * gamma_h_at_raw;
 
   // B. Prédicteurs Volume ARX
   real rho_global = tanh(rho_global_raw); // ramener dans l'intervalle (-1, 1) pour la stationnarité de l'AR(1)
@@ -157,7 +180,7 @@ transformed parameters {
   //vector[N_h] lag_effect = beta_lag_m49[cluster_h[dyad_id_h]] .* is_mig_lag;
 
   // LOGIT HURDLE 
-  vector[N_h] logit_p = alpha_h_em[orig_id_h] + gamma_h_at[dest_id_h] + X_h * beta_h; //+ lag_effect;
+  //vector[N_h] logit_p = alpha_h_em[orig_id_h] + gamma_h_at[dest_id_h] + X_h * beta_h; //+ lag_effect;
 
   // Substitution dyadique par l'addition des marginales : alpha_i + gamma_j
   vector[N_v] mu_dt = alpha_em[orig_id_v] + gamma_at[dest_id_v] + X_v * beta_grav;
@@ -168,17 +191,17 @@ transformed parameters {
 
 model {
   // A. Priors Hurdle
-  intercept_h_em ~ normal(-1.0, 1.5);
-  theta_h_em     ~ normal(0, 0.5);
-  tau_h_em       ~ normal(0, 0.25); 
-  alpha_h_em_raw ~ std_normal();
+  //intercept_h_em ~ normal(-1.0, 1.5);
+  //theta_h_em     ~ normal(0, 0.5);
+  //tau_h_em       ~ normal(0, 0.25); 
+  //alpha_h_em_raw ~ std_normal();
   
-  intercept_h_at ~ normal(0, 1.0);
-  theta_h_at     ~ normal(0, 0.5);
-  tau_h_at       ~ normal(0, 0.25);
-  gamma_h_at_raw ~ std_normal();
+  //intercept_h_at ~ normal(0, 1.0);
+  //theta_h_at     ~ normal(0, 0.5);
+  //tau_h_at       ~ normal(0, 0.25);
+  //gamma_h_at_raw ~ std_normal();
 
-  beta_h[1]     ~ normal(1.0, 1.0); // Prior positif pour logit_xgb 
+  //beta_h[1]     ~ normal(1.0, 1.0); // Prior positif pour logit_xgb 
   //mu_beta_lag    ~ normal(2.0, 2.5); // definition du prior à discuter
   //sigma_beta_lag ~ exponential(1);
   //beta_lag_raw   ~ std_normal();
@@ -243,32 +266,42 @@ model {
   phi_disp_raw     ~ std_normal();
 
   // Vraisemblance Hurdle
-  is_mig ~ bernoulli_logit(logit_p);
+  //is_mig ~ bernoulli_logit(logit_p);
 
   // Vraisemblance Volume (Vectorisation intégrale)
   
-  // Expansion du paramètre de dispersion à la dimension N_v
-  vector[N_v] phi_full = phi_disp_d[dyad_id_v];
+//   // Expansion du paramètre de dispersion à la dimension N_v
+//   vector[N_v] phi_full = phi_disp_d[dyad_id_v];
   
-  // Évaluation de la vraisemblance non-tronquée (1 seul noeud de diff)
-  target += neg_binomial_2_log_lpmf(flow | ar_pred, phi_full);
+//   // Évaluation de la vraisemblance non-tronquée (1 seul noeud de diff)
+//   target += neg_binomial_2_log_lpmf(flow | ar_pred, phi_full);
   
-  // Évaluation vectorielle de la pénalité de troncature (ZTNB)
-  // Calcul de log(P(Y=0)) pour la ZTNB
-  vector[N_v] log_p0 = phi_full .* (log(phi_full) - log(phi_full + exp(ar_pred)));
+//   // Évaluation vectorielle de la pénalité de troncature (ZTNB)
+//   // Calcul de log(P(Y=0)) pour la ZTNB
+//   vector[N_v] log_p0 = phi_full .* (log(phi_full) - log_sum_exp(log(phi_full), ar_pred));  
+//   // Somme vectorielle des pénalités
+//   target += -sum(log1m_exp(log_p0));
+// }
+
+vector[N_v] phi_full = phi_disp_d[dyad_id_v];
   
-  // Somme vectorielle des pénalités
-  target += -sum(log1m_exp(log_p0));
+  // Grainsize définit la taille minimale du bloc envoyé à un cœur.
+  // Une valeur entre 256 et 1024 est généralement optimale pour minimiser 
+  // le surcoût de communication inter-threads.
+  int grainsize = 2000; 
+  
+  // Appel multithreadé
+  target += reduce_sum(partial_ztnb_sum, flow, grainsize, ar_pred, phi_full);
 }
 
 generated quantities {
   // Allocation dynamique : Taille 0 si do_loo = 0 pour désactiver l'écriture disque
-  vector[do_loo ? N_h : 0] log_lik_h;
+  //vector[do_loo ? N_h : 0] log_lik_h;
   vector[do_loo ? N_v : 0] log_lik_v;
 
   if (do_loo) {
-    for (n in 1:N_h)
-      log_lik_h[n] = bernoulli_logit_lpmf(is_mig[n] | logit_p[n]);
+    //for (n in 1:N_h)
+    //  log_lik_h[n] = bernoulli_logit_lpmf(is_mig[n] | logit_p[n]);
 
     for (n in 1:N_v) {
       int d = dyad_id_v[n];
@@ -277,26 +310,26 @@ generated quantities {
     }
   }
 
-  array[do_ppc ? N_h : 0] int is_mig_hat;
-  if (do_ppc) {
-    for (n in 1:N_h)
-      is_mig_hat[n] = bernoulli_logit_rng(logit_p[n]);
-  }
+  //array[do_ppc ? N_h : 0] int is_mig_hat;
+  //if (do_ppc) {
+  //  for (n in 1:N_h)
+  //    is_mig_hat[n] = bernoulli_logit_rng(logit_p[n]);
+  //}
 
   // Prédictions OOS pour les dyades de test
-  vector[N_test] prob_mig_test;
+  //vector[N_test] prob_mig_test;
   vector[N_test] mu_dt_test;     
   vector[N_test] phi_test;       
 
   for (n in 1:N_test) {
-    int d_h = dyad_id_test_h[n];
+    //int d_h = dyad_id_test_h[n];
     int d_v = dyad_id_test_v[n];
     int k = cluster_test_h[n];
 
-    real logit_p_test = alpha_h_em[orig_id_test_v[n]] + gamma_h_at[dest_id_test_v[n]]
-                        + dot_product(X_h_test[n], beta_h);
+    //real logit_p_test = alpha_h_em[orig_id_test_v[n]] + gamma_h_at[dest_id_test_v[n]]
+    //                    + dot_product(X_h_test[n], beta_h);
                         //+ beta_lag_m49[k] * is_mig_lag_test[n];
-    prob_mig_test[n] = inv_logit(logit_p_test);
+    //prob_mig_test[n] = inv_logit(logit_p_test);
 
     // Résolution immédiate des effets pays (valide même pour une dyade jamais vue en Train)
     real mu_full = alpha_em[orig_id_test_v[n]] + gamma_at[dest_id_test_v[n]] + dot_product(X_v_test[n], beta_grav);
