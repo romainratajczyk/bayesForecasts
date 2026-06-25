@@ -1,7 +1,7 @@
 
 # Prédiction bayésienne des flux migratoires internationaux 
 
-Projet de recherche supervisé par Nicolas Chopin (CREST), réalisé à l'ENSAE.   
+Research project supervised by Nicolas Chopin (CREST-ENSAE). Work in progress, will be submitted to Journal of Royal Statistics, Serie A. 
 
 
 # TL;DR :  
