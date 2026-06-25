@@ -283,7 +283,8 @@ model {
 
 // Vraisemblance avec multithreading 
   vector[N_v] phi_full = phi_disp_d[dyad_id_v];
-  int grainsize = 2000;
+    int grainsize = 8000; // Ajuster en fonction de la taille du dataset et du nombre de threads disponibles, règle empirique grainsize ≈ N_v / (threads_per_chain × facteur)
+
   target += reduce_sum(partial_ztnb_sum, flow, grainsize, ar_pred, phi_full);
 }
 

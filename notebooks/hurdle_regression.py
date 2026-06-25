@@ -77,21 +77,21 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 #                     ^ variance volume          ^ variance hurdle
 # ce deuxième terme est nul quand p_ij est donnée exogène du XGBoost
 
-# In[24]:
+# In[ ]:
 
 
 # Sampling parameters
 N_CHAINS        = 4
 PARALLEL_CHAINS = 4
-ITER_WARMUP     = 700
-ITER_SAMPLING   = 1000
+ITER_WARMUP     = 600
+ITER_SAMPLING   = 800
 THIN            = 2
 MAX_TREEDEPTH   = 12
 ADAPT_DELTA     = 0.95
 N_DRAWS         = ITER_SAMPLING // THIN
 
 # Contrôle matériel : vectorized ou multithreading
-USE_MULTITHREADING = True  # True (reduce_sum) / False (Vectorisation standard)
+USE_MULTITHREADING = False  # True (reduce_sum) / False (Vectorisation standard)
 
 
 # SUBSET DE PAYS (modifier RUN_SIZE uniquement)
@@ -611,14 +611,14 @@ if anomalies == 0:
     print("stan_data : 0 NaN, 0 Inf")
 
 
-# In[39]:
+# In[ ]:
 
 
 if USE_MULTITHREADING:
     STAN_FILE = "../STAN/HMC_hurdle_regression_multithread.stan"
     THREADS_PER_CHAIN = 4  # Saturation des 12 P-cores (3 threads * 4 chaînes)
 else:
-    STAN_FILE = "../STAN/HMC_XGB_ARX_ZTNB_vectorized.stan"
+    STAN_FILE = "../STAN/HMC_hurdle_regression_vectorized.stan"
 
 
 # Purge du binaire précédent pour prévenir la corruption du cache compilateur
