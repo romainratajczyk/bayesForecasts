@@ -72,6 +72,10 @@ data {
   //  Flags (interrupteurs)
   int<lower=0, upper=1> do_ppc;
   int<lower=0, upper=1> do_loo; // interrupteur log_lik
+
+  int<lower=0> N_edges;
+  array[N_edges] int<lower=1, upper=N_pays> node1;
+  array[N_edges] int<lower=1, upper=N_pays> node2;
 }
 
 parameters {
@@ -117,7 +121,9 @@ parameters {
   real<lower=0> phi_disp_global;
   vector<lower=0>[K_clusters] phi_disp_cluster;
   vector[D_v] phi_disp_raw;
-  real<lower=0> tau_phi_disp;           
+  real<lower=0> tau_phi_disp;  
+  vector[N_pays] u_em;          // champ spatial (émission hurdle)
+  real<lower=0> tau_u_em;       // son échelle         
 }
 
 transformed parameters {
@@ -133,7 +139,7 @@ transformed parameters {
   vector[N_pays] mu_h_em_vec = intercept_h_em + Z_em * theta_h_em;
   vector[N_pays] mu_h_at_vec = intercept_h_at + Z_at * theta_h_at;
   
-  vector[N_pays] alpha_h_em = mu_h_em_vec + tau_h_em * alpha_h_em_raw;
+vector[N_pays] alpha_h_em = mu_h_em_vec + tau_h_em * alpha_h_em_raw + tau_u_em * u_em;
   vector[N_pays] gamma_h_at = mu_h_at_vec + tau_h_at * gamma_h_at_raw;
 
   // B. Prédicteurs Volume ARX
@@ -251,6 +257,13 @@ model {
   // Vraisemblance Hurdle
   is_mig ~ bernoulli_logit(logit_p);
 
+
+  // Spatial AR : chaque u_i est tiré vers la moyenne de ses voisins
+  target += -0.5 * dot_self(u_em[node1] - u_em[node2]);
+  u_em ~ normal(0, 3);              // ancre faible : rend le prior propre
+                                  // (fixe le niveau + gère îles/composantes déconnectées)
+  tau_u_em ~ normal(0, 0.5);        // half-normal via <lower=0>
+
   // Vraisemblance Volume (Vectorisation intégrale, mais non multithreadé)
   
   // // Expansion du paramètre de dispersion à la dimension N_v
@@ -300,12 +313,14 @@ generated quantities {
     int k = cluster_test_h[n];
 
     real logit_p_test = alpha_h_em[orig_id_test_v[n]] + gamma_h_at[dest_id_test_v[n]]
-                        + dot_product(X_h_test[n], beta_h);
-                        //+ beta_lag_m49[k] * is_mig_lag_test[n];
+                        + dot_product(X_h_test[n], beta_h)
+                        + beta_lag_m49[k] * is_mig_lag_test[n];
     prob_mig_test[n] = inv_logit(logit_p_test);
 
     // Résolution immédiate des effets pays (valide même pour une dyade jamais vue en Train)
     real mu_full = alpha_em[orig_id_test_v[n]] + gamma_at[dest_id_test_v[n]] + dot_product(X_v_test[n], beta_grav);
+
+    vector[N_h] p_hurdle = inv_logit(logit_p);
 
     if (d_v > 0) {
       // Application stricte de l'AR(1) inconditionnelle. 
@@ -319,6 +334,7 @@ generated quantities {
       phi_test[n] = phi_disp_cluster[k];
     }
   }
+
 
   real rho_global_monitor = rho_global;
 }
