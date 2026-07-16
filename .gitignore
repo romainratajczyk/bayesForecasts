@@ -11,6 +11,7 @@ data/OLD_VERSIONS/
 data/data_authors/
 data/data_prediction.csv
 data/panel_june_tobecompleted.csv
+data/panel_june_filled.csv
 notebooks/stan_outputs
 notebooks/stan_outputs_tmux
 bin/ 
