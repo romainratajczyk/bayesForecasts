@@ -21,15 +21,6 @@
 //   (7) ICAR : ajout d'une contrainte douce sum-to-zero (le niveau de u_em
 //       etait confondu avec intercept_h_em -> ridge, pas de vraie ancre).
 //
-// PREREQUIS COTE PYTHON (voir patch_notebook_v3.md) :
-//   - 'is_mig_lag' RETIRE de HURDLE_VARS (il entre deja via lag_effect ;
-//     en v2 il etait present DEUX fois : standardise dans X_h ET brut dans
-//     lag_effect -> colinearite exacte beta_h[11] / mu_beta_lag).
-//     Ordre attendu de X_h (K_h = 12) :
-//     [1] log_D_ij [2] log_D_ij_sq [3] COL_ij [4] OL_ij
-//     [5-10] geopolitiques standardisees [11] A2_log [K_h=12] logit_rf
-//   - stan_data complete par N_calib et calib_idx (positions 1-based des
-//     lignes de df_hurdle dont l'annee est dans {2010, 2005}).
 // ============================================================================
 
 data {
@@ -60,6 +51,7 @@ data {
   array[N_v] int<lower=1, upper=N_pays> dest_id_v;
   array[N_v] int<lower=1> flow;
   vector[N_v] log_flow_lag;
+  array[N_v] int<lower=0, upper=1> is_emergent_v;
   matrix[N_v, K_v] X_v;
 
   // Clusters M49
@@ -136,10 +128,14 @@ parameters {
 
   vector[K_v] beta_grav;
   real rho_global_raw;
-  real<lower=0> sigma_rho_m49;        // dispersion inter-cluster (nouveau)
+  real<lower=0> sigma_rho_m49;        // dispersion inter-cluster 
   vector[K_clusters] rho_m49_raw;     // non-centre (nouveau)
-  real<lower=0> tau_rho;              // dispersion intra-cluster (inchange)
+  real<lower=0> tau_rho;              // dispersion intra-cluster 
   vector[D_v] rho_raw;
+  // Coût  hiérarchique amnésie markovienne et log_flow_lag = -infty
+  real mu_kappa;
+  real<lower=0> sigma_kappa;
+  vector[K_clusters] kappa_raw;
 
   // C. Dispersion
   real<lower=0> phi_disp_global;
@@ -170,6 +166,7 @@ transformed parameters {
   // la deviation dyadique est nulle
   vector[K_clusters] rho_m49 = tanh(rho_m49_lat); // donne malgré tout la quantité lisible dans (−1,1) pour tableaux et violons ; on ne compose pas deux tanh à la suite
   //médiane des rho _d du cluster plutôt que leur moyenne (bien)
+  vector[K_clusters] kappa_m49 = mu_kappa + sigma_kappa * kappa_raw;
 }
 
 model {
@@ -229,6 +226,11 @@ model {
   tau_rho ~ exponential(2);
   rho_raw ~ std_normal();
 
+  // Priors d'émergence
+  mu_kappa ~ normal(-2.0, 1.5);
+  sigma_kappa ~ exponential(2);
+  kappa_raw ~ std_normal();
+
   // ---------- C. Priors Dispersion ----------
   phi_disp_global ~ exponential(1);
   phi_disp_cluster ~ lognormal(log(phi_disp_global + 1e-8), 0.5);
@@ -252,7 +254,16 @@ model {
 
     vector[N_v] mu_dt   = alpha_em[orig_id_v] + gamma_at[dest_id_v]
                           + X_v * beta_grav;
-    vector[N_v] ar_pred = mu_dt + rho_v .* (log_flow_lag - mu_dt);
+    // Bifurcation structurelle de l'espérance
+    vector[N_v] ar_pred;
+    for (n in 1:N_v) {
+      if (is_emergent_v[n] == 1) {
+        ar_pred[n] = mu_dt[n] + kappa_m49[cluster_v[dyad_id_v[n]]];
+      } else {
+        ar_pred[n] = mu_dt[n] + rho_v[n] * (log_flow_lag[n] - mu_dt[n]);
+      }
+  }
+    //vector[N_v] ar_pred = mu_dt + rho_v .* (log_flow_lag - mu_dt);
 
     // NB2 non tronquee
     target += neg_binomial_2_log_lpmf(flow | ar_pred, phi_v);
@@ -297,21 +308,44 @@ generated quantities {
                                   + beta_lag_m49[cluster_test_h] .* is_mig_lag_test;
     prob_mig_test = inv_logit(logit_p_test);
 
-    // Volume test — matrice-vecteur une fois, puis boucle legere pour le if
-    vector[N_test] mu_full = alpha_em[orig_id_test_v] + gamma_at[dest_id_test_v]
-                             + X_v_test * beta_grav;
-    for (n in 1:N_test) {
-      int d_v = dyad_id_test_v[n];
+    // // Volume test — matrice-vecteur une fois, puis boucle legere pour le if
+    // vector[N_test] mu_full = alpha_em[orig_id_test_v] + gamma_at[dest_id_test_v]
+    //                          + X_v_test * beta_grav;
+    // for (n in 1:N_test) {
+    //   int d_v = dyad_id_test_v[n];
+    //   if (d_v > 0) {
+    //     mu_dt_test[n] = mu_full[n] + rho_d[d_v] * (log_flow_lag_test[n] - mu_full[n]);
+        
+    //     phi_test[n]   = phi_d[d_v];
+    //   } else {
+    //     // Dyade jamais vue en train : inertie globale + phi du cluster
+    //     mu_dt_test[n] = mu_full[n] + tanh(rho_m49_lat[cluster_test_h[n]]) * (log_flow_lag_test[n] - mu_full[n]);
+    //     phi_test[n]   = phi_disp_cluster[cluster_test_h[n]];
+    //   }
+    // }
+    // Volume test matrice-vecteur une fois, puis boucle legere pour le if
+  vector[N_test] mu_full = alpha_em[orig_id_test_v] + gamma_at[dest_id_test_v] + X_v_test * beta_grav;
+
+  for (n in 1:N_test) {
+    int d_v = dyad_id_test_v[n];
+    int k = cluster_test_h[n];
+  
+  // Bifurcation OOS : is_mig_lag_test == 0 sature les Faux Positifs, les trous et les émergences pures.
+    // Remplace : if (is_mig_lag_test[n] == 0) {
+    if (is_mig_lag_test[n] < 0.5) {
+      mu_dt_test[n] = mu_full[n] + kappa_m49[k];
+      phi_test[n] = (d_v > 0) ? phi_d[d_v] : phi_disp_cluster[k];
+    } else {
+    // Application de la chaîne ARX(1) pour les continuités strictes
       if (d_v > 0) {
         mu_dt_test[n] = mu_full[n] + rho_d[d_v] * (log_flow_lag_test[n] - mu_full[n]);
-        
-        phi_test[n]   = phi_d[d_v];
+        phi_test[n] = phi_d[d_v];
       } else {
-        // Dyade jamais vue en train : inertie globale + phi du cluster
-        mu_dt_test[n] = mu_full[n] + tanh(rho_m49_lat[cluster_test_h[n]]) * (log_flow_lag_test[n] - mu_full[n]);
-        phi_test[n]   = phi_disp_cluster[cluster_test_h[n]];
+        mu_dt_test[n] = mu_full[n] + rho_global * (log_flow_lag_test[n] - mu_full[n]);
+        phi_test[n] = phi_disp_cluster[k];
       }
     }
+  }
 
     
     
