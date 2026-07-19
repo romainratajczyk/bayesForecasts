@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[ ]:
 
 
 import os
@@ -143,7 +143,7 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 #                     ^ variance volume          ^ variance hurdle
 # ce deuxième terme est nul quand p_ij est donnée exogène du XGBoost
 
-# In[3]:
+# In[ ]:
 
 
 # Sampling parameters
@@ -355,8 +355,6 @@ for lst_name in ['HURDLE_VARS', 'X_VOL_COLS']:
     if 'flow_momentum' not in lst:
         globals()[lst_name] = lst + ['flow_momentum']
 
-K_grav = len(X_VOL_COLS)
-K_h = len(HURDLE_VARS) + 1 # +1 pour logit_xgb
 
 df_train = df[df['year'] <= 2010].copy()
 df_test = df[df['year'] == 2015].copy()
@@ -450,6 +448,9 @@ if 'A2_log' not in HURDLE_VARS:
 if 'A2_log' not in X_VOL_COLS: 
     X_VOL_COLS = X_VOL_COLS + ['A2_log']
 
+K_grav = len(X_VOL_COLS)
+K_h = len(HURDLE_VARS) + 1 # +1 pour logit_xgb
+
 # La démonstration clé : A^2 est non-nul là où toutes les variables d'inertie sont muettes
 mask_fn_zone = (df_test['is_mig_lag'] == 0) & (df_test.get('log_stock_lag', 0) == 0)
 print(f"Zone FN (lag=0, stock=0) : {mask_fn_zone.sum():,} dyades, "
@@ -460,7 +461,7 @@ print(f"Zone FN (lag=0, stock=0) : {mask_fn_zone.sum():,} dyades, "
 
 
 
-# In[11]:
+# In[ ]:
 
 
 from sklearn.ensemble import RandomForestClassifier
