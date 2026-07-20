@@ -200,7 +200,7 @@ model {
   sum(u_em) ~ normal(0, 0.001 * N_pays);
   // Prior propre pour les composantes deconnectees / iles
   // (Freni-Sterrantino et al.) — garde le champ identifie hors du graphe.
-  u_em ~ normal(0, 3);
+  u_em ~ normal(0, 1);
   tau_u_em ~ normal(0, 0.5);              // half-normal via <lower=0>
 
   // ---------- B. Priors Volume ----------
