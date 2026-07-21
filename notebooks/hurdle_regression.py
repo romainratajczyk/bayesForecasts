@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
+# In[69]:
 
 
 import os
@@ -96,7 +96,7 @@ class ClusterMonitor:
 
 # ## RHO PAR DYADE, MULTITHREADING, hurdle logit ~alpha + gamma + X_h*beta_h + beta_lag_m49[cluster_h]*is_mig_lag
 
-# In[2]:
+# In[70]:
 
 
 import warnings
@@ -143,14 +143,14 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 #                     ^ variance volume          ^ variance hurdle
 # ce deuxième terme est nul quand p_ij est donnée exogène du XGBoost
 
-# In[ ]:
+# In[71]:
 
 
 # Sampling parameters
 N_CHAINS        = 4
 PARALLEL_CHAINS = 4
 ITER_WARMUP     = 500
-ITER_SAMPLING   = 401
+ITER_SAMPLING   = 501
 THIN            = 1
 MAX_TREEDEPTH   = 12
 ADAPT_DELTA     = 0.95
@@ -166,7 +166,7 @@ RUN_SIZE = 5
 # _LABELS  = {1: '50 pays', 2: '80 pays', 3: '110 pays', 4: '140 pays', 5: '190 pays (complet)'}
 
 
-# In[4]:
+# In[72]:
 
 
 df_main = pd.read_csv(DATA_PATH)
@@ -185,7 +185,7 @@ df = df.sort_values(['orig', 'dest', 'year']).reset_index(drop=True)
 print(f"{df['orig'].nunique()} pays après exclusions")
 
 
-# In[5]:
+# In[73]:
 
 
 # 1. Base 50 : Échantillon fondamental. Diversité géographique maximale et intégration des plus grands pôles.
@@ -240,7 +240,7 @@ N_pays = df['orig'].nunique()
 print(f"Run : {df['orig'].nunique()} pays dans le panel")
 
 
-# In[6]:
+# In[74]:
 
 
 # clustering M49
@@ -284,7 +284,7 @@ K_clusters = len(_M49_TO_STAN)
 print(f"{K_clusters} clusters M49")
 
 
-# In[7]:
+# In[75]:
 
 
 # df['is_migration'] = (df['flow'] > 0).astype(int)
@@ -321,7 +321,7 @@ for raw in GRAVITY_VARS_RAW:
     df[f'log_{raw}'] = np.log(df[raw].replace(0, np.nan)) # créer les variables log
 
 
-# In[ ]:
+# In[76]:
 
 
 # === Momentum du flux : Δ = log Y_{t-1} − log Y_{t-2} (pente, absente de l'ARX(1)) ===
@@ -340,20 +340,20 @@ print(f"flow_momentum non-nul : {(df['flow_momentum'] != 0).mean()*100:.1f}% | "
 # HURDLE_VARS RF avec colinéarité 
 HURDLE_VARS = [
     'log_D_ij', 'log_D_ij_sq', 'COL_ij', 'OL_ij',
-    'v2x_polyarchy_o_lag1',# 'v2x_clphy_o_lag1', 'intensity_level_o_lag1',
-    'v2x_polyarchy_d_lag1'#, 'v2x_clphy_d_lag1', 'intensity_level_d_lag1'#, 'is_mig_lag'
+    'v2x_polyarchy_o_lag5',# 'v2x_clphy_o_lag1', 'intensity_level_o_lag1',
+    'v2x_polyarchy_d_lag5'#, 'v2x_clphy_d_lag1', 'intensity_level_d_lag1'#, 'is_mig_lag'
 ]
 
 X_VOL_COLS = [
     'log_D_ij', 'log_D_ij_sq', 'LB_ij', 'OL_ij', 'COL_ij', #'t_2000', 't_2000_sq',
-    'v2x_polyarchy_o_lag1', 'v2x_clphy_o_lag1', 'intensity_level_o_lag1',
-     'v2x_clphy_d_lag1', 'intensity_level_d_lag1'#, 'type_of_conflict_d_lag1', 'v2x_polyarchy_d_lag1'
+    'v2x_polyarchy_o_lag5', 'v2x_clphy_o_lag5', 'intensity_level_o_lag5',
+     'v2x_clphy_d_lag5', 'intensity_level_d_lag5'#, 'type_of_conflict_d_lag1', 'v2x_polyarchy_d_lag1'
 ]
 
-for lst_name in ['HURDLE_VARS', 'X_VOL_COLS']:
-    lst = globals()[lst_name]
-    if 'flow_momentum' not in lst:
-        globals()[lst_name] = lst + ['flow_momentum']
+# for lst_name in ['HURDLE_VARS', 'X_VOL_COLS']:
+#     lst = globals()[lst_name]
+#     if 'flow_momentum' not in lst:
+#         globals()[lst_name] = lst + ['flow_momentum']
 
 
 df_train = df[df['year'] <= 2010].copy()
@@ -363,7 +363,7 @@ df_test_full['dyad'] = df_test_full['orig'] + "_" + df_test_full['dest']
 df = df_train
 
 
-# In[9]:
+# In[78]:
 
 
 HURDLE_REQUIRED = HURDLE_VARS + [ 'is_migration', 'dyad', 'continent_orig',
@@ -398,7 +398,7 @@ N_h, N_v = len(df_hurdle), len(df_volume)
 print(f"Hurdle : {N_h:,} obs | Volume : {N_v:,} obs sans trous")
 
 
-# In[ ]:
+# In[79]:
 
 
 out_degree = df_hurdle.groupby(['orig', 'year'])['is_mig_lag'].sum().reset_index(name='out_degree_o')
@@ -479,14 +479,14 @@ RF_VARS = [
     'LL_i', 'LL_j',
     'LA_i', 'LA_j',
     'LB_ij', 'logD_times_LB',
-    'type_of_conflict_o_lag1', 'type_of_conflict_d_lag1',
+    'type_of_conflict_o_lag5', 'type_of_conflict_d_lag5',
     'transitivity_proxy',
     'v2x_polyarchy_o_lag5', 'v2x_clphy_o_lag5', 'intensity_level_o_lag5', 'type_of_conflict_o_lag5',
     'v2x_polyarchy_d_lag5', 'v2x_clphy_d_lag5', 'intensity_level_d_lag5', 'type_of_conflict_d_lag5',
-    'log_stock_lag',
-    'any_conflict_o_window', 'max_conflict_o_window', 'any_intense_o_window', 'any_intl_o_window',
-    'any_conflict_d_window', 'max_conflict_d_window', 'any_intense_d_window', 'any_intl_d_window',
-    'new_conflict_o', 'new_conflict_d', 'persistent_conflict_o', 'persistent_conflict_d', 'A2_log'
+    'log_stock_lag', 'A2_log'
+    #'any_conflict_o_window', 'max_conflict_o_window', 'any_intense_o_window', 'any_intl_o_window',
+    #'any_conflict_d_window', 'max_conflict_d_window', 'any_intense_d_window', 'any_intl_d_window',
+    #'new_conflict_o', 'new_conflict_d', 'persistent_conflict_o', 'persistent_conflict_d', 
 ]
 
 for lst_name in ['RF_VARS']:
@@ -533,7 +533,7 @@ print(f"K_h : {K_h}")
 print(pd.Series(rf_model.feature_importances_, index=RF_VARS_PRESENT).sort_values(ascending=False).head(10).round(4))
 
 
-# In[12]:
+# In[81]:
 
 
 # /!!!!!\
@@ -587,7 +587,7 @@ X_vol_std, stats_vol = standardize_matrix(df_volume[X_VOL_COLS].values, X_VOL_CO
 X_h_std,   stats_h   = standardize_matrix(df_hurdle[HURDLE_VARS].values, HURDLE_VARS, BINARY_COLS_HUR)
 
 
-# In[28]:
+# In[82]:
 
 
 df_test['dyad'] = df_test['orig'] + "_" + df_test['dest']
@@ -620,7 +620,7 @@ df_test['dest_id_test_v'] = df_test['dest'].map(pays_to_id)
 print(f"Test OOS : {len(df_test):,} obs")
 
 
-# In[14]:
+# In[83]:
 
 
 K_Z = 1
@@ -665,7 +665,7 @@ print(f"Z_mat — NaN résiduels : {np.isnan(Z_mat).sum()} | min : {Z_mat.min():
 
 # # penser à prendre le PIB courant de 2010 une fois dispo dans le dataset
 
-# In[15]:
+# In[84]:
 
 
 df_hurdle = df_hurdle.replace([np.inf, -np.inf], np.nan).dropna(subset=HURDLE_REQUIRED)
@@ -749,7 +749,7 @@ if anomalies == 0:
     print("stan_data : 0 NaN, 0 Inf")
 
 
-# In[16]:
+# In[85]:
 
 
 #  Graphe de contiguïté pour le prior spatial (liste d'arêtes pour Stan)
@@ -773,7 +773,7 @@ print(f"Arêtes frontière : {len(edges)} | pays sans voisin terrestre (îles) :
 stan_data.update({'N_edges': len(edges), 'node1': node1, 'node2': node2})
 
 
-# In[17]:
+# In[140]:
 
 
 import numpy as np
@@ -804,11 +804,11 @@ def audit_paire(df, var1, var2, target='is_migration'):
     print()
 
 
-audit_paire(df_hurdle, 'intensity_level_d_lag1', 'type_of_conflict_d_lag1')
+audit_paire(df_volume, 'log_flow_lag', 'flow_momentum')
 # audit_paire(df_hurdle, 'A2_log', 'transitivity_proxy')
 
 
-# In[18]:
+# In[87]:
 
 
 from sklearn.linear_model import LinearRegression
@@ -832,7 +832,7 @@ conflict_block = ['intensity_level_d_lag1', 'type_of_conflict_d_lag1',
 print(vif_table(df_volume, conflict_block))
 
 
-# In[19]:
+# In[88]:
 
 
 # Test DW spatial (proba RF /!!!\)
@@ -943,7 +943,7 @@ print(vif_table(df_volume, conflict_block))
 # print(f"DW côté destination  : {DW_dest:.4f}")
 
 
-# In[20]:
+# In[89]:
 
 
 # import numpy as np
@@ -1183,7 +1183,7 @@ print(f"Outputs : {custom_prefix}_chain*.csv")
 # cmdstanpy.rebuild_cmdstan()   # long : plusieurs minutes
 
 
-# In[21]:
+# In[90]:
 
 
 CSV_PREFIX    = f"ARX_{N_pays}pays_{N_CHAINS}c_{ITER_SAMPLING}it_{arch_suffix}"
@@ -1192,10 +1192,10 @@ csv_files = [
     for i in range(N_CHAINS)
 ]
 
-# csv_files = ['/Users/rratajczyk/Desktop/bayesForecasts/bayesTemp/onyxia data/stan_outputs_tmux/ARX_190pays_4c_400it_VECT_chain1.csv',
-#              '/Users/rratajczyk/Desktop/bayesForecasts/bayesTemp/onyxia data/stan_outputs_tmux/ARX_190pays_4c_400it_VECT_chain2.csv',
-#              '/Users/rratajczyk/Desktop/bayesForecasts/bayesTemp/onyxia data/stan_outputs_tmux/ARX_190pays_4c_400it_VECT_chain3.csv',
-#              '/Users/rratajczyk/Desktop/bayesForecasts/bayesTemp/onyxia data/stan_outputs_tmux/ARX_190pays_4c_400it_VECT_chain4.csv']
+csv_files = ['/Users/rratajczyk/Desktop/bayesForecasts/bayesTemp/onyxia data/stan_outputs_tmux/ARX_190pays_4c_401it_VECT_chain1.csv',
+             '/Users/rratajczyk/Desktop/bayesForecasts/bayesTemp/onyxia data/stan_outputs_tmux/ARX_190pays_4c_401it_VECT_chain2.csv',
+             '/Users/rratajczyk/Desktop/bayesForecasts/bayesTemp/onyxia data/stan_outputs_tmux/ARX_190pays_4c_401it_VECT_chain3.csv',
+             '/Users/rratajczyk/Desktop/bayesForecasts/bayesTemp/onyxia data/stan_outputs_tmux/ARX_190pays_4c_401it_VECT_chain4.csv']
 with open(csv_files[0], 'r') as f:
     for line in f:
         if not line.startswith('#'):
@@ -1234,7 +1234,7 @@ del dfs
 print(f"RAM : {df_final.memory_usage().sum() / 1024**2:.1f} Mo")
 
 
-# In[22]:
+# In[91]:
 
 
 # YEARS_CALIB = [df_train['year'].max(), df_train['year'].max()-5]
@@ -1277,7 +1277,7 @@ print(f"p_hurdle rempli : train 2010={df_hurdle.query('year==2010').p_hurdle.not
       f"test 2015={df_test['p_hurdle'].notna().sum():,}")
 
 
-# In[51]:
+# In[92]:
 
 
 #prob_mig        = df_final.filter(like='prob_mig_test').values
@@ -1293,7 +1293,7 @@ rho_m49_draws    = df_final.filter(like='rho_m49').values
 print(f"mu_test shape : {mu_test.shape}")
 
 
-# In[52]:
+# In[126]:
 
 
 valid_draws = ~(
@@ -1311,6 +1311,7 @@ n_sp     = phi_safe
 p_sp     = np.clip(phi_safe / (phi_safe + lam), 1e-10, 1.0 - 1e-10)
 
 flow_cond_sim = np.random.negative_binomial(n_sp, p_sp)
+
 zeros_mask    = (flow_cond_sim == 0)
 max_retries, retries = 30, 0
 while zeros_mask.any() and retries < max_retries:
@@ -1321,12 +1322,13 @@ if zeros_mask.any():
     flow_cond_sim[zeros_mask] = 1
 
 flow_cond_med_final = np.median(flow_cond_sim, axis=0)
+flow_cond_q25       = np.percentile(flow_cond_sim, 25, axis=0)
 
 # Hurdle : XGB seul, pas de draws Stan
 # prob_med = df_test['proba_rf'].values
 
 
-# In[53]:
+# In[127]:
 
 
 # from sklearn.metrics import f1_score
@@ -1408,7 +1410,7 @@ flow_cond_med_final = np.median(flow_cond_sim, axis=0)
 # print(f"  OOS 2015 stratifié : F1 = {f1_score(y_test[m_ok], pred):.4f}")
 
 
-# In[ ]:
+# In[128]:
 
 
 # from sklearn.calibration import calibration_curve
@@ -1435,60 +1437,152 @@ flow_cond_med_final = np.median(flow_cond_sim, axis=0)
 # plt.tight_layout(); plt.show()
 
 
-# In[105]:
+# In[129]:
+
+
+# from sklearn.metrics import f1_score
+
+# # ============================================================
+# #  CALIBRATION RÉGIONALE M49 À BUDGET DE FAUX POSITIFS
+# #  Calibrée sur la dernière année de train, appliquée AVEUGLE sur 2015.
+# #  Chaque cluster M49 reçoit son propre seuil (sévérité propre à son instabilité).
+# # ============================================================
+# CALIB_YEAR     = df_train['year'].max()   # CURSEUR STATIONNARITÉ (repasser à 2005)
+# FP_BUDGET      = 1      # budget FP sur l'année de calib ; ~<100 FP réels sur 2015 (précision se dégrade)
+# MIN_POS        = 30      # cluster trop petit -> seuil global de repli
+
+# # --- données de calibration (année de train) ---
+# mask = (df_hurdle['year'].values == CALIB_YEAR) & df_hurdle['p_hurdle'].notna().values
+# y_c   = df_hurdle.loc[mask, 'is_migration'].values
+# p_c   = df_hurdle.loc[mask, 'p_hurdle'].values
+# clu_c = df_hurdle.loc[mask, 'continent_orig'].values
+# grid  = np.unique(np.quantile(p_c, np.linspace(0.50, 0.9999, 400)))   # grille quantile (évite la saturation 0.98)
+
+# # --- cible test 2015 ---
+# y_test = (df_test['flow'].values > 0).astype(int)
+# p_test = df_test['p_hurdle'].values
+
+# def seuils_pour_lambda(lam):
+#     """Seuil optimal par cluster (max TP - lam*FP) + FP total sur la calib."""
+#     thr, fp_tot = {}, 0
+#     for c in np.unique(clu_c):
+#         mc = (clu_c == c)
+#         y_m, p_m = y_c[mc], p_c[mc]
+#         if y_m.sum() < MIN_POS:
+#             thr[c] = None; continue
+#         best_t, best_u, best_fp = grid[-1], -np.inf, 0
+#         for t in grid:
+#             pred = p_m >= t
+#             tp = int((pred & (y_m == 1)).sum()); fp = int((pred & (y_m == 0)).sum())
+#             u = tp - lam * fp
+#             if u > best_u:
+#                 best_u, best_t, best_fp = u, t, fp
+#         thr[c] = best_t; fp_tot += best_fp
+#     return thr, fp_tot
+
+# # --- bissection géométrique sur lambda pour atteindre le budget FP ---
+# lo, hi = 0.5, 500.0
+# for _ in range(40):
+#     lam = np.sqrt(lo * hi)
+#     _, fp_tot = seuils_pour_lambda(lam)
+#     if fp_tot > FP_BUDGET: lo = lam
+#     else:                  hi = lam
+# thr_c, fp_tot = seuils_pour_lambda(hi)
+# t_global = float(np.quantile(p_c, 0.999))   # repli pour micro-clusters
+
+# print(f"lambda = {hi:.1f} | FP attendus (calib {CALIB_YEAR}) = {fp_tot}")
+# print("--- Seuils par cluster M49 ---")
+# for c, t in sorted(thr_c.items()):
+#     lbl = SUBREGION_LABELS.get(stan_to_m49.get(c, 99), f'cluster_{c}')
+#     print(f"  {lbl:<28} t* = {'(repli global)' if t is None else round(t,4)}")
+
+# # ============================================================
+# #  APPLICATION AVEUGLE SUR 2015
+# # ============================================================
+# clu_t   = df_test['continent_orig_fill'].values
+# thr_vec = np.array([thr_c.get(c) if thr_c.get(c) is not None else t_global for c in clu_t])
+
+# m_ok       = ~np.isnan(p_test)
+# y_pred_bin = np.zeros(len(p_test), dtype=int)
+# y_pred_bin[m_ok] = (p_test[m_ok] >= thr_vec[m_ok]).astype(int)
+
+# fp = int(((y_pred_bin == 1) & (y_test == 0)).sum())
+# fn = int(((y_pred_bin == 0) & (y_test == 1)).sum())
+# tp = int(((y_pred_bin == 1) & (y_test == 1)).sum())
+# prec = tp / max(tp + fp, 1); rec = tp / max(tp + fn, 1)
+# print(f"\nOOS 2015 : FP = {fp} | FN = {fn} | TP = {tp}")
+# print(f"           précision = {prec:.3f} | rappel = {rec:.3f} | F1 = {f1_score(y_test[m_ok], y_pred_bin[m_ok]):.4f}")
+
+
+# In[161]:
 
 
 from sklearn.metrics import f1_score
+from sklearn.model_selection import StratifiedKFold
 
 # ============================================================
-#  CALIBRATION RÉGIONALE M49 À BUDGET DE FAUX POSITIFS
-#  Calibrée sur la dernière année de train, appliquée AVEUGLE sur 2015.
-#  Chaque cluster M49 reçoit son propre seuil (sévérité propre à son instabilité).
+#  CALIBRATION RÉGIONALE M49 — quantile FPR (A) + 5-fold (C) + anti-drift (B)
+#  Chaque cluster reçoit son seuil = quantile haut de ses dyades FERMÉES,
+#  stabilisé par CV, corrigé d'un facteur de drift mesuré 2005->2010.
 # ============================================================
-CALIB_YEAR     = df_train['year'].max()   # CURSEUR STATIONNARITÉ (repasser à 2005)
-FP_BUDGET      = 50      # budget FP sur l'année de calib ; ~<100 FP réels sur 2015 (précision se dégrade)
-MIN_POS        = 30      # cluster trop petit -> seuil global de repli
+CALIB_YEAR = df_train['year'].max()          # 2010
+DRIFT_YEAR = CALIB_YEAR - 5                   # 2005 (année connue pour mesurer le drift)
+FPR_TARGET = 0.0001                            # cible : 0.3% des fermées autorisées (curseur sévérité)
+MIN_POS    = 30                               # cluster trop petit -> repli global
+MIN_NEG    = 20                               # trop peu de fermées -> repli global
+N_SPLITS   = 3
+CLU_COL    = 'continent_orig'            # MÊME colonne calib ET test (cohérence codes)
 
-# --- données de calibration (année de train) ---
-mask = (df_hurdle['year'].values == CALIB_YEAR) & df_hurdle['p_hurdle'].notna().values
-y_c   = df_hurdle.loc[mask, 'is_migration'].values
-p_c   = df_hurdle.loc[mask, 'p_hurdle'].values
-clu_c = df_hurdle.loc[mask, 'continent_orig'].values
-grid  = np.unique(np.quantile(p_c, np.linspace(0.50, 0.9999, 400)))   # grille quantile (évite la saturation 0.98)
-
-# --- cible test 2015 ---
-y_test = (df_test['flow'].values > 0).astype(int)
-p_test = df_test['p_hurdle'].values
-
-def seuils_pour_lambda(lam):
-    """Seuil optimal par cluster (max TP - lam*FP) + FP total sur la calib."""
-    thr, fp_tot = {}, 0
-    for c in np.unique(clu_c):
-        mc = (clu_c == c)
-        y_m, p_m = y_c[mc], p_c[mc]
-        if y_m.sum() < MIN_POS:
+def seuils_quantile_cv(p, y, clu, fpr_target):
+    """Seuil par cluster = quantile(1-fpr) des probas FERMÉES, moyenné sur 5 folds."""
+    thr = {}
+    for c in np.unique(clu):
+        mc = (clu == c)
+        y_m, p_m = y[mc], p[mc]
+        if y_m.sum() < MIN_POS or (y_m == 0).sum() < MIN_NEG:
             thr[c] = None; continue
-        best_t, best_u, best_fp = grid[-1], -np.inf, 0
-        for t in grid:
-            pred = p_m >= t
-            tp = int((pred & (y_m == 1)).sum()); fp = int((pred & (y_m == 0)).sum())
-            u = tp - lam * fp
-            if u > best_u:
-                best_u, best_t, best_fp = u, t, fp
-        thr[c] = best_t; fp_tot += best_fp
-    return thr, fp_tot
+        skf = StratifiedKFold(n_splits=N_SPLITS, shuffle=True, random_state=42)
+        fold_thr = []
+        for tr_idx, _ in skf.split(p_m, y_m):               # calibre sur 4/5 à chaque tour
+            neg = p_m[tr_idx][y_m[tr_idx] == 0]
+            if len(neg): fold_thr.append(np.quantile(neg, 1 - fpr_target))
+        thr[c] = float(np.mean(fold_thr)) if fold_thr else None
+    return thr
 
-# --- bissection géométrique sur lambda pour atteindre le budget FP ---
-lo, hi = 0.5, 500.0
-for _ in range(40):
-    lam = np.sqrt(lo * hi)
-    _, fp_tot = seuils_pour_lambda(lam)
-    if fp_tot > FP_BUDGET: lo = lam
-    else:                  hi = lam
-thr_c, fp_tot = seuils_pour_lambda(hi)
-t_global = float(np.quantile(p_c, 0.999))   # repli pour micro-clusters
+def fpr_reel(p, y, clu, thr, t_global):
+    """FPR global obtenu en appliquant un dict de seuils."""
+    thr_v = np.array([thr.get(c) if thr.get(c) is not None else t_global for c in clu])
+    pred  = p >= thr_v
+    neg   = (y == 0)
+    return (pred & neg).sum() / max(neg.sum(), 1)
 
-print(f"lambda = {hi:.1f} | FP attendus (calib {CALIB_YEAR}) = {fp_tot}")
+# --- données 2010 (calibration) et 2005 (mesure du drift) ---
+def slice_year(yr):
+    m = (df_hurdle['year'].values == yr) & df_hurdle['p_hurdle'].notna().values
+    return (df_hurdle.loc[m, 'p_hurdle'].values,
+            df_hurdle.loc[m, 'is_migration'].values,
+            df_hurdle.loc[m, CLU_COL].values)
+
+p_10, y_10, clu_10 = slice_year(CALIB_YEAR)
+p_05, y_05, clu_05 = slice_year(DRIFT_YEAR)
+t_global = float(np.quantile(p_10, 1 - FPR_TARGET))         # repli micro-clusters
+
+# ============================================================
+#  (B) FACTEUR ANTI-DRIFT : calibrer sur 2005, mesurer le FPR réel sur 2010
+# ============================================================
+thr_05      = seuils_quantile_cv(p_05, y_05, clu_05, FPR_TARGET)
+fpr_2010    = fpr_reel(p_10, y_10, clu_10, thr_05, t_global)  # FPR obtenu hors-échantillon
+drift_ratio = max(fpr_2010 / FPR_TARGET, 1.0)                 # >1 si la précision se dégrade
+fpr_corrige = FPR_TARGET / drift_ratio                        # on resserre d'autant pour 2015
+print(f"Anti-drift : FPR visé {FPR_TARGET:.3%} -> réel 2010 {fpr_2010:.3%} "
+      f"(x{drift_ratio:.2f}) -> cible corrigée {fpr_corrige:.3%}")
+
+# ============================================================
+#  CALIBRATION FINALE sur 2010 avec la cible corrigée
+# ============================================================
+thr_c    = seuils_quantile_cv(p_10, y_10, clu_10, fpr_corrige)
+t_global = float(np.quantile(p_10, 1 - fpr_corrige))
+
 print("--- Seuils par cluster M49 ---")
 for c, t in sorted(thr_c.items()):
     lbl = SUBREGION_LABELS.get(stan_to_m49.get(c, 99), f'cluster_{c}')
@@ -1497,6 +1591,8 @@ for c, t in sorted(thr_c.items()):
 # ============================================================
 #  APPLICATION AVEUGLE SUR 2015
 # ============================================================
+y_test  = (df_test['flow'].values > 0).astype(int)
+p_test  = df_test['p_hurdle'].values
 clu_t   = df_test['continent_orig_fill'].values
 thr_vec = np.array([thr_c.get(c) if thr_c.get(c) is not None else t_global for c in clu_t])
 
@@ -1509,10 +1605,11 @@ fn = int(((y_pred_bin == 0) & (y_test == 1)).sum())
 tp = int(((y_pred_bin == 1) & (y_test == 1)).sum())
 prec = tp / max(tp + fp, 1); rec = tp / max(tp + fn, 1)
 print(f"\nOOS 2015 : FP = {fp} | FN = {fn} | TP = {tp}")
-print(f"           précision = {prec:.3f} | rappel = {rec:.3f} | F1 = {f1_score(y_test[m_ok], y_pred_bin[m_ok]):.4f}")
+print(f"           précision = {prec:.3f} | rappel = {rec:.3f} | "
+      f"F1 = {f1_score(y_test[m_ok], y_pred_bin[m_ok]):.4f}")
 
 
-# In[106]:
+# In[162]:
 
 
 #  PRODUCTION FINALE 
@@ -1528,7 +1625,10 @@ assert not np.isnan(p_hurdle_test).any(), "p_hurdle_test contient des NaN"
 # 'seuils' = dict {1: t_existants, 0: t_emergents}
 # thr_vec    = np.where(df_test['is_mig_lag'].values == 1, seuils[1], seuils[0])
 # y_pred_bin = (p_hurdle_test >= thr_vec).astype(int)
-y_pred     = np.where(y_pred_bin == 1, flow_cond_med_final, 0.0)
+Q_EMERGENT  = 25   # quantile pour les ouvertures sans historique (calibrer sur 2010 : {10,25,40,50})
+is_emergent = (df_test['is_mig_lag'].values == 0)
+flow_final  = np.where(is_emergent, flow_cond_q25, flow_cond_med_final)
+y_pred      = np.where(y_pred_bin == 1, flow_final, 0.0)
 
 #  intervalles : propage l'incertitude d'ouverture ET de volume 
 
@@ -1546,7 +1646,7 @@ print(f"Ouvertures prédites : {y_pred_bin.sum():,} / {len(y_pred_bin):,} "
       f"(réel : {y_true_bin.sum():,})")
 
 
-# In[107]:
+# In[163]:
 
 
 # ancienne cellule seuils régionalisé 
@@ -1605,7 +1705,7 @@ print(f"Ouvertures prédites : {y_pred_bin.sum():,} / {len(y_pred_bin):,} "
 # print(f"\nSeuil global de référence : {optimal_threshold:.3f}")
 
 
-# In[108]:
+# In[164]:
 
 
 acc        = accuracy_score(y_true_bin, y_pred_bin)
@@ -1628,7 +1728,7 @@ print(f"{'Welch & Raftery (2022)':<40} | {'~1,200':>10} | {'76.0%':>10} | {'93.0
 print(f"{f'Hurdle ARX ZTNB ({N_pays} pays)':<40} | {global_mae:>10,.0f} | {f'{mape_wr:.1f}%':>10} | {f'{coverage*100:.1f}%':>10}")
 
 
-# In[109]:
+# In[165]:
 
 
 # Tableau de diagnostic bayésien
@@ -1734,7 +1834,7 @@ bad = summary_df[(summary_df['R-hat'] > 1.01) | (summary_df['ESS'] < 400)]
 print(f"Paramètres hors seuils : {len(bad)}")
 
 
-# In[110]:
+# In[166]:
 
 
 # Tableau des coefficients Hurdle et Volume
@@ -1804,7 +1904,7 @@ plt.savefig(f"rho_phi_cluster_M49_{N_pays}.pdf", bbox_inches='tight')
 plt.show()
 
 
-# In[111]:
+# In[167]:
 
 
 # Figure : hétéroscédasticité M49
@@ -1825,7 +1925,7 @@ plt.savefig(f"NegBin_dispersion_cluster_M49_{N_pays}.pdf", bbox_inches='tight')
 plt.show()
 
 
-# In[112]:
+# In[168]:
 
 
 # Figure : coefficients Hurdle et Volume
@@ -1866,7 +1966,7 @@ plot_coefs(
 )
 
 
-# In[113]:
+# In[169]:
 
 
 # Figure : scatter OOS + distribution des erreurs
@@ -1898,7 +1998,7 @@ plt.savefig(f"NegBin_prediction_scatter_{N_pays}.pdf", bbox_inches='tight')
 plt.show()
 
 
-# In[114]:
+# In[170]:
 
 
 # Cartographie FP / FN
