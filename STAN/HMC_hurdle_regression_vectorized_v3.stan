@@ -54,6 +54,8 @@ data {
   array[N_v] int<lower=0, upper=1> is_emergent_v;
   matrix[N_v, K_v] X_v;
 
+  vector[D_v] log_scale_v;
+
   // Clusters M49
   int<lower=1> K_clusters;
   array[D_h] int<lower=1, upper=K_clusters> cluster_h;
@@ -142,6 +144,8 @@ parameters {
   vector<lower=0>[K_clusters] phi_disp_cluster;
   vector[D_v] phi_disp_raw;
   real<lower=0> tau_phi_disp;
+
+  real delta_phi;
 }
 
 transformed parameters {
@@ -223,7 +227,7 @@ model {
   rho_global_raw ~ normal(0.5, 0.5);
   sigma_rho_m49 ~ exponential(2);     // shrinkage des M49 vers l'ancre globale
   rho_m49_raw ~ std_normal();
-  tau_rho ~ exponential(2);
+  tau_rho ~ exponential(1);
   rho_raw ~ std_normal();
 
   // Priors d'émergence
@@ -237,6 +241,8 @@ model {
   tau_phi_disp ~ exponential(2);
   phi_disp_raw ~ std_normal();
 
+  delta_phi ~ normal(0, 0.5);
+
   // ---------- Vraisemblance Hurdle (GLM primitive) ----------
   {
     vector[N_h] eta0 = alpha_h_em[orig_id_h] + gamma_h_at[dest_id_h]
@@ -248,7 +254,7 @@ model {
   {
     vector[D_v] rho_d = tanh(rho_m49_lat[cluster_v] + tau_rho * rho_raw);
     vector[D_v] phi_d = phi_disp_cluster[cluster_v]
-                        .* exp(tau_phi_disp * phi_disp_raw);
+                    .* exp(delta_phi * log_scale_v + tau_phi_disp * phi_disp_raw);
     vector[N_v] rho_v = rho_d[dyad_id_v];
     vector[N_v] phi_v = phi_d[dyad_id_v];
 
@@ -293,7 +299,7 @@ generated quantities {
     // Recomputations locales, UNE fois par draw sauvegarde, sans autodiff.
     vector[D_v] rho_d = tanh(rho_m49_lat[cluster_v] + tau_rho * rho_raw);
     vector[D_v] phi_d = phi_disp_cluster[cluster_v]
-                        .* exp(tau_phi_disp * phi_disp_raw);
+                    .* exp(delta_phi * log_scale_v + tau_phi_disp * phi_disp_raw);
 
     // Hurdle train
     vector[N_h] logit_p = alpha_h_em[orig_id_h] + gamma_h_at[dest_id_h]
