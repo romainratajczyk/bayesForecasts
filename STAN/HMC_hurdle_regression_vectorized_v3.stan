@@ -51,6 +51,7 @@ data {
   array[N_v] int<lower=1, upper=N_pays> dest_id_v;
   array[N_v] int<lower=1> flow;
   vector[N_v] log_flow_lag;
+  vector[N_v] momentum_v;
   array[N_v] int<lower=0, upper=1> is_emergent_v;
   matrix[N_v, K_v] X_v;
 
@@ -75,6 +76,7 @@ data {
   vector[N_test] is_mig_lag_test;
   matrix[N_test, K_v] X_v_test;
   vector[N_test] log_flow_lag_test;
+  vector[N_test] momentum_test;
   array[N_test] int<lower=1, upper=K_clusters> cluster_test_h;
 
   // Flags
@@ -138,6 +140,7 @@ parameters {
   real mu_kappa;
   real<lower=0> sigma_kappa;
   vector[K_clusters] kappa_raw;
+  real omega_raw;
 
   // C. Dispersion
   real<lower=0> phi_disp_global;
@@ -171,6 +174,8 @@ transformed parameters {
   vector[K_clusters] rho_m49 = tanh(rho_m49_lat); // donne malgré tout la quantité lisible dans (−1,1) pour tableaux et violons ; on ne compose pas deux tanh à la suite
   //médiane des rho _d du cluster plutôt que leur moyenne (bien)
   vector[K_clusters] kappa_m49 = mu_kappa + sigma_kappa * kappa_raw;
+
+  real<lower=0, upper=1> omega = inv_logit(omega_raw);
 }
 
 model {
@@ -230,6 +235,8 @@ model {
   tau_rho ~ exponential(1);
   rho_raw ~ std_normal();
 
+  omega_raw ~ normal(1.5, 1);   // centre ~0.82, laisse la place à [0.5, 0.97]
+
   // Priors d'émergence
   mu_kappa ~ normal(-2.0, 1.5);
   sigma_kappa ~ exponential(2);
@@ -266,7 +273,9 @@ model {
       if (is_emergent_v[n] == 1) {
         ar_pred[n] = mu_dt[n] + kappa_m49[cluster_v[dyad_id_v[n]]];
       } else {
-        ar_pred[n] = mu_dt[n] + rho_v[n] * (log_flow_lag[n] - mu_dt[n]);
+        real L_bar = log_flow_lag[n] - (1 - omega) * momentum_v[n];
+        ar_pred[n] = mu_dt[n] + rho_v[n] * (L_bar - mu_dt[n]);
+        //ar_pred[n] = mu_dt[n] + rho_v[n] * (log_flow_lag[n] - mu_dt[n]);
       }
   }
     //vector[N_v] ar_pred = mu_dt + rho_v .* (log_flow_lag - mu_dt);
@@ -343,11 +352,12 @@ generated quantities {
       phi_test[n] = (d_v > 0) ? phi_d[d_v] : phi_disp_cluster[k];
     } else {
     // Application de la chaîne ARX(1) pour les continuités strictes
+      real L_bar = log_flow_lag_test[n] - (1 - omega) * momentum_test[n];
       if (d_v > 0) {
-        mu_dt_test[n] = mu_full[n] + rho_d[d_v] * (log_flow_lag_test[n] - mu_full[n]);
+        mu_dt_test[n] = mu_full[n] + rho_d[d_v] * (L_bar - mu_full[n]);
         phi_test[n] = phi_d[d_v];
       } else {
-        mu_dt_test[n] = mu_full[n] + rho_global * (log_flow_lag_test[n] - mu_full[n]);
+        mu_dt_test[n] = mu_full[n] + rho_global * (L_bar - mu_full[n]);
         phi_test[n] = phi_disp_cluster[k];
       }
     }
@@ -363,7 +373,8 @@ generated quantities {
                              + X_v * beta_grav;
       for (n in 1:N_v) {
         int d = dyad_id_v[n];
-        real ar_n = mu_dt_tr[n] + rho_d[d] * (log_flow_lag[n] - mu_dt_tr[n]);
+        real L_bar = log_flow_lag[n] - (1 - omega) * momentum_v[n];
+        real ar_n = mu_dt_tr[n] + rho_d[d] * (L_bar - mu_dt_tr[n]);
         real lp0  = -phi_d[d] * log1p_exp(ar_n - log(phi_d[d]));
         log_lik_v[n] = neg_binomial_2_log_lpmf(flow[n] | ar_n, phi_d[d])
                        - log1m_exp(lp0);
