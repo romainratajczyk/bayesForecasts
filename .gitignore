@@ -30,6 +30,9 @@ data/df_main_arX_hurdle_final_v3.csv
 # notebooks/dataset_production_finalstep2.py
 
 
+notebooks/
+STAN/
+
 
 STAN/old_stan_codes
 notebooks/old_notebooks_Hurdle_ARX
