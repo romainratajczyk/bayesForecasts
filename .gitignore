@@ -32,11 +32,13 @@ data/df_main_arX_hurdle_final_v3.csv
 
 
 STAN/*
-R_production/
+R_production/*
+!R_production/Analyse_descriptive.R
 
 pinns/*
 #  Ignorer l'intégralité du contenu du dossier
 notebooks/*
+!notebooks/analyse_donnees.ipynb
 
 #  Déclarer l'exception explicite pour le fichier cible
 #!notebooks/hurdle_BART_figures.ipynb
