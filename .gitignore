@@ -39,7 +39,8 @@ pinns/*
 notebooks/*
 
 #  Déclarer l'exception explicite pour le fichier cible
-#!notebooks/hurdle_regression.ipynb
+!notebooks/hurdle_BART_figures.ipynb
+!STAN/HMC_BART_vectorized.stan
 
 #STAN/old_stan_codes
 #notebooks/old_notebooks_Hurdle_ARX
