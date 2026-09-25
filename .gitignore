@@ -29,8 +29,9 @@ data/df_main_arX_hurdle_final_v3.csv
 # notebooks/02_analysis.ipynb
 # notebooks/dataset_production_finalstep2.py
 
-
-
+CODE STAN.pdf
+figures_oil_PINNs_traj.png
+jrss a/*
 STAN/*
 R_production/*
 !R_production/Analyse_descriptive.R
