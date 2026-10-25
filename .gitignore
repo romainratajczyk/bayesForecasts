@@ -37,11 +37,10 @@ R_production/*
 !R_production/Analyse_descriptive.R
 
 pinns/*
-#  Ignorer l'intégralité du contenu du dossier
+
 notebooks/*
 !notebooks/analyse_donnees.ipynb
 
-#  Déclarer l'exception explicite pour le fichier cible
 #!notebooks/hurdle_BART_figures.ipynb
 #!STAN/HMC_BART_vectorized.stan
 
