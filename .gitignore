@@ -40,7 +40,7 @@ pinns/*
 
 notebooks/*
 !notebooks/analyse_donnees.ipynb
-
+data_prep/*
 #!notebooks/hurdle_BART_figures.ipynb
 #!STAN/HMC_BART_vectorized.stan
 

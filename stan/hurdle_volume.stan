@@ -1,7 +1,4 @@
-// Volume part of the hurdle model: zero-truncated NB2 for positive flows. Mean: country effects with the GDP of
-// the period, gravity covariates, an AR term in deviations from the lagged structural mean (two-lag average with
-// weight omega), and iid country-period shocks. Persistence, entry level and dispersion pooled by M49 sub-region
-// of origin.
+// Volume part of the hurdle model: zero-truncated NB2 for positive flows
 data {
   int<lower=1> N_c;                     // countries
   int<lower=1> P;                       // training periods 1990, ..., T - 5
@@ -11,7 +8,7 @@ data {
   vector[K] beta_mu;                    // prior of beta, set by covariate name
   vector<lower=0>[K] beta_sd;
 
-  // cells (dyad, period) whose structural mean is needed; the first N_cell_tr serve training
+  // cells (dyad, period) whose structural mean is needed: the training rows first, then the other forecast rows
   int<lower=1> N_cell;
   int<lower=1, upper=N_cell> N_cell_tr;
   array[N_cell] int<lower=1> li_o;      // (period - 1) * N_c + origin
@@ -24,13 +21,10 @@ data {
   array[N] int<lower=1> y;
   array[N] int<lower=1, upper=D> dyad;
   array[D] int<lower=1, upper=M> cl;
-  array[N] int<lower=1, upper=N_cell_tr> c0;   // cell at t
-  array[N] int<lower=1, upper=N_cell_tr> c1;   // cell at t - 5 (c0 if unavailable)
-  array[N] int<lower=1, upper=N_cell_tr> c2;   // cell at t - 10 (c1 if unavailable)
+  array[N] int<lower=1, upper=N_cell_tr> c0;   // cell of the observation
   vector<lower=0, upper=1>[N] is_ar;           // Y_{t-5} > 0
-  vector<lower=0, upper=1>[N] has_l2;          // Y_{t-10} > 0 and its cell available
   vector[N] ly1;                               // log Y_{t-5} (0 if Y_{t-5} = 0)
-  vector[N] mom;                               // log Y_{t-5} - log Y_{t-10} (0 if has_l2 = 0)
+  vector[N] mom;                               // log Y_{t-5} - log Y_{t-10} (0 if Y_{t-10} = 0)
   vector[N] s;                                 // standardised log Y_{t-5}
 
   // country-period shocks: Q training periods with observations, then T
@@ -43,10 +37,7 @@ data {
   array[N_t] int<lower=0, upper=D> dyad_t;     // 0: dyad unseen in training
   array[N_t] int<lower=1, upper=M> cl_t;
   array[N_t] int<lower=1, upper=N_cell> c0_t;
-  array[N_t] int<lower=1, upper=N_cell> c1_t;
-  array[N_t] int<lower=1, upper=N_cell> c2_t;
   vector<lower=0, upper=1>[N_t] is_ar_t;
-  vector<lower=0, upper=1>[N_t] has_l2_t;
   vector[N_t] ly1_t;
   vector[N_t] mom_t;
   vector[N_t] s_t;
@@ -124,9 +115,8 @@ model {
     vector[N_cell_tr] mu = to_vector(alpha)[li_o[1:N_cell_tr]] + to_vector(gamma)[li_d[1:N_cell_tr]]
                            + X[1:N_cell_tr] * beta;
     vector[N] m0 = mu[c0];
-    vector[N] mbar = has_l2 .* (omega * mu[c1] + (1 - omega) * mu[c2]) + (1 - has_l2) .* mu[c1];
     vector[N] rho = tanh(r[cl[dyad]] + tau_rho * eps[dyad]);
-    vector[N] eta = m0 + is_ar .* rho .* (ly1 - (1 - omega) * mom - mbar) + (1 - is_ar) .* kappa[cl[dyad]]
+    vector[N] eta = m0 + is_ar .* rho .* (ly1 - (1 - omega) * mom - m0) + (1 - is_ar) .* kappa[cl[dyad]]
                     + xi_em[xo] + xi_at[xd];
     vector[N] phi = phi_k[cl[dyad]] .* exp(delta_phi * s + tau_phi * eps2[dyad]);
     target += neg_binomial_2_log_lpmf(y | eta, phi);
@@ -158,8 +148,7 @@ generated quantities {
       real rho = tanh(r[k] + tau_rho * e_rho);
       phi_t[n] = phi_k[k] * exp(delta_phi * s_t[n] + tau_phi * e_phi);
       if (is_ar_t[n] > 0.5) {
-        real mbar = has_l2_t[n] > 0.5 ? omega * mu[c1_t[n]] + (1 - omega) * mu[c2_t[n]] : mu[c1_t[n]];
-        eta_t[n] = mu[c0_t[n]] + rho * (ly1_t[n] - (1 - omega) * mom_t[n] - mbar);
+        eta_t[n] = mu[c0_t[n]] + rho * (ly1_t[n] - (1 - omega) * mom_t[n] - mu[c0_t[n]]);
       } else {
         eta_t[n] = mu[c0_t[n]] + kappa[k];
       }
