@@ -5,6 +5,7 @@ data/.DS_Store
 *.xlsx
 .xls
 #data/
+bayesF_private/*
 data/GravityCEPII/
 data/GeoDistCEPII/
 data/OLD_VERSIONS/
