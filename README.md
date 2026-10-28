@@ -1,7 +1,8 @@
 
 # A Bayesian hurdle model for bilateral migration forecasting
 
-Research project supervised by Nicolas Chopin (CREST-ENSAE). Work in progress, will be submitted to Journal of Royal Statistics, Serie A. 
+Research project. Work in progress, will be submitted to Journal of Royal Statistics, Serie A.
+Authors: Romain Ratajczyk, Varnel Tientcheu, Nicolas Chopin, Adrian E.Raftery, Nathan G.Welch. 
 
 
 # Abstract 
